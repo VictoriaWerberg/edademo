@@ -736,9 +736,11 @@ async function runCode() {
 }
 
 function clearOutput() {
+  document.getElementById('codeEditor').value = '';
   const p = document.getElementById('outputPanel');
   p.className = 'output-panel empty';
   p.textContent = 'Run code or click a quick action to see results here.';
+  document.getElementById('aiExplanation').style.display = 'none';
 }
 
 function setOutputLoading() {
