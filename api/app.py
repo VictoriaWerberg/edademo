@@ -25,7 +25,6 @@ import pathlib
 import tempfile
 import zipfile
 
-import anthropic
 import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -259,6 +258,7 @@ Rules:
         return jsonify({"error": "ANTHROPIC_API_KEY not configured on the server."}), 503
 
     try:
+        import anthropic
         client = anthropic.Anthropic(api_key=api_key)
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
