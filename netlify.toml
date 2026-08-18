@@ -1,0 +1,10 @@
+# Netlify configuration
+# netlify.toml lives at the repo root; publish dir points into site/
+
+[build]
+  publish = "site"
+
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200
