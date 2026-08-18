@@ -357,9 +357,7 @@
 <header>
   <h1>Interconnect <span>EDA</span></h1>
   <div class="api-badge">
-    API:
-    <input id="apiUrl" value="https://edademo-25f59f83d5d2.herokuapp.com"
-           placeholder="https://edademo-25f59f83d5d2.herokuapp.com" />
+    API: <span style="color:var(--green);font-size:.75rem;">edademo connected</span>
   </div>
 </header>
 
@@ -496,8 +494,10 @@ const state = {
 };
 
 /* ───────────────────────────────────────────── Helpers */
+const API_BASE = 'https://edademo-25f59f83d5d2.herokuapp.com';
+
 function apiUrl(path) {
-  return document.getElementById('apiUrl').value.replace(/\/$/, '') + path;
+  return API_BASE + path;
 }
 
 function setHtml(id, html) {
