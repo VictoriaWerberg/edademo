@@ -15,26 +15,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 3rem 1rem;
+      padding: 3rem 1rem 5rem;
     }
 
-    header {
-      text-align: center;
-      margin-bottom: 3rem;
-    }
-
-    header h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: #f1f5f9;
-    }
-
-    header p {
-      margin-top: 0.5rem;
-      color: #94a3b8;
-      font-size: 0.95rem;
-    }
+    header { text-align: center; margin-bottom: 3rem; }
+    header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; color: #f1f5f9; }
+    header p  { margin-top: 0.5rem; color: #94a3b8; font-size: 0.95rem; }
 
     .card {
       background: #1e2330;
@@ -42,16 +28,13 @@
       border-radius: 12px;
       padding: 2rem;
       width: 100%;
-      max-width: 540px;
+      max-width: 640px;
+      margin-bottom: 1.5rem;
     }
 
-    .card h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 1.25rem;
-      color: #cbd5e1;
-    }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1.25rem; color: #cbd5e1; }
 
+    /* Upload zone */
     .drop-zone {
       border: 2px dashed #3b4566;
       border-radius: 8px;
@@ -60,100 +43,57 @@
       cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
     }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #6366f1; background: #1a1f35; }
+    .drop-zone input[type="file"] { display: none; }
+    .drop-zone label { display: block; cursor: pointer; }
+    .drop-zone .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .drop-zone p { color: #64748b; font-size: 0.875rem; }
+    .drop-zone p strong { color: #818cf8; }
 
-    .drop-zone:hover,
-    .drop-zone.drag-over {
-      border-color: #6366f1;
-      background: #1a1f35;
-    }
-
-    .drop-zone input[type="file"] {
-      display: none;
-    }
-
-    .drop-zone label {
-      display: block;
-      cursor: pointer;
-    }
-
-    .drop-zone .icon {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .drop-zone p {
-      color: #64748b;
-      font-size: 0.875rem;
-    }
-
-    .drop-zone p strong {
-      color: #818cf8;
-    }
-
-    #file-name {
-      margin-top: 0.75rem;
-      font-size: 0.8rem;
-      color: #94a3b8;
-      min-height: 1rem;
-    }
+    #file-name { margin-top: 0.75rem; font-size: 0.8rem; color: #94a3b8; min-height: 1rem; }
 
     button[type="submit"] {
-      margin-top: 1.5rem;
-      width: 100%;
-      padding: 0.75rem;
-      background: #6366f1;
-      color: #fff;
-      border: none;
+      margin-top: 1.5rem; width: 100%; padding: 0.75rem;
+      background: #6366f1; color: #fff; border: none; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.2s;
+    }
+    button[type="submit"]:hover:not(:disabled) { background: #4f46e5; }
+    button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #status { margin-top: 1rem; font-size: 0.85rem; min-height: 1.25rem; color: #94a3b8; text-align: center; }
+    #status.error { color: #f87171; }
+
+    /* Results */
+    #results { width: 100%; max-width: 640px; display: none; }
+
+    .finding {
+      padding: 1.25rem 1.5rem;
       border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    button[type="submit"]:hover:not(:disabled) {
-      background: #4f46e5;
-    }
-
-    button[type="submit"]:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    #status {
-      margin-top: 1rem;
-      font-size: 0.85rem;
-      min-height: 1.25rem;
-      color: #94a3b8;
-      text-align: center;
-    }
-
-    #results {
-      margin-top: 2rem;
-      width: 100%;
-      max-width: 540px;
-      display: none;
-    }
-
-    #results .card {
       margin-bottom: 1rem;
     }
+    .finding.significant   { background: #14293d; border-left: 3px solid #38bdf8; }
+    .finding h3 { font-size: 0.9rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.6rem; }
+    .finding .stat-row { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 0.5rem; }
+    .stat { display: flex; flex-direction: column; }
+    .stat .label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat .value { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+    .stat .value.highlight { color: #38bdf8; }
 
-    pre {
-      background: #0f1117;
-      border-radius: 6px;
-      padding: 1rem;
-      font-size: 0.8rem;
-      overflow-x: auto;
-      color: #a5f3fc;
-    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 0.5rem; }
+    th { text-align: left; padding: 0.4rem 0.75rem; color: #64748b; font-weight: 500; border-bottom: 1px solid #2d3548; }
+    td { padding: 0.4rem 0.75rem; border-bottom: 1px solid #1a2030; }
+    tr:last-child td { border-bottom: none; }
 
-    .milestone-note {
-      margin-top: 0.5rem;
-      font-size: 0.8rem;
-      color: #475569;
-      font-style: italic;
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.25rem; }
+    .summary-item { background: #161c28; border-radius: 6px; padding: 0.6rem 0.9rem; }
+    .summary-item .s-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; }
+    .summary-item .s-value { font-size: 1rem; font-weight: 600; color: #e2e8f0; }
+
+    .pill {
+      display: inline-block; padding: 0.15rem 0.5rem; border-radius: 99px;
+      font-size: 0.7rem; font-weight: 600; margin-left: 0.4rem;
     }
+    .pill.sig { background: #14532d; color: #4ade80; }
   </style>
 </head>
 <body>
@@ -170,7 +110,7 @@
         <label for="file-input">
           <div class="icon">&#128193;</div>
           <p><strong>Choose a file</strong> or drag it here</p>
-          <p>CSV — interconnect_measurements.csv to start</p>
+          <p>Single CSV (measurements) or ZIP of all four CSVs</p>
         </label>
         <input type="file" id="file-input" accept=".csv,.zip" />
       </div>
@@ -181,81 +121,188 @@
   </div>
 
   <div id="results">
-    <div class="card">
-      <h2>Results</h2>
-      <pre id="results-pre"></pre>
-      <p class="milestone-note">Full charts and findings panels arrive in Milestones 4 – 6.</p>
+
+    <div class="card" id="card-summary">
+      <h2>Dataset summary</h2>
+      <div class="summary-grid" id="summary-grid"></div>
     </div>
+
+    <div class="card">
+      <h2>Key findings</h2>
+      <div id="findings-container"></div>
+    </div>
+
+    <div class="card">
+      <h2>Resistance by via type &amp; anneal group</h2>
+      <table id="group-means-table">
+        <thead><tr><th>Via type</th><th>Anneal</th><th>Mean ratio</th><th>Std</th><th>N</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>ANOVA table</h2>
+      <table id="anova-table">
+        <thead><tr><th>Term</th><th>F</th><th>p-value</th><th>η²</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
   </div>
 
   <script>
-    // --- Config -----------------------------------------------------------
-    // Replace with your Heroku API URL once deployed.
+    // -----------------------------------------------------------------
+    // Config — replace with your Heroku URL after deploying
+    // -----------------------------------------------------------------
     const API_URL = "https://YOUR-APP.herokuapp.com/analyze";
 
-    // --- Elements ---------------------------------------------------------
-    const form      = document.getElementById("upload-form");
-    const dropZone  = document.getElementById("drop-zone");
-    const fileInput = document.getElementById("file-input");
-    const fileLabel = document.getElementById("file-name");
-    const submitBtn = document.getElementById("submit-btn");
-    const status    = document.getElementById("status");
-    const results   = document.getElementById("results");
-    const resultsPre = document.getElementById("results-pre");
+    // Elements
+    const form        = document.getElementById("upload-form");
+    const dropZone    = document.getElementById("drop-zone");
+    const fileInput   = document.getElementById("file-input");
+    const fileLabel   = document.getElementById("file-name");
+    const submitBtn   = document.getElementById("submit-btn");
+    const statusEl    = document.getElementById("status");
+    const resultsEl   = document.getElementById("results");
 
-    // --- File selection ---------------------------------------------------
+    // File selection
     fileInput.addEventListener("change", () => {
       const f = fileInput.files[0];
-      if (f) {
-        fileLabel.textContent = f.name;
-        submitBtn.disabled = false;
-      }
+      if (f) { fileLabel.textContent = f.name; submitBtn.disabled = false; }
     });
 
-    // --- Drag-and-drop ---------------------------------------------------
-    ["dragenter", "dragover"].forEach(evt =>
-      dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add("drag-over"); })
+    // Drag and drop
+    ["dragenter","dragover"].forEach(e =>
+      dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add("drag-over"); })
     );
-    ["dragleave", "drop"].forEach(evt =>
-      dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove("drag-over"); })
+    ["dragleave","drop"].forEach(e =>
+      dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove("drag-over"); })
     );
-    dropZone.addEventListener("drop", e => {
-      const f = e.dataTransfer.files[0];
-      if (f) {
-        // Assign to the hidden input so the form handler works uniformly
-        const dt = new DataTransfer();
-        dt.items.add(f);
-        fileInput.files = dt.files;
-        fileLabel.textContent = f.name;
-        submitBtn.disabled = false;
-      }
+    dropZone.addEventListener("drop", ev => {
+      const f = ev.dataTransfer.files[0];
+      if (!f) return;
+      const dt = new DataTransfer(); dt.items.add(f); fileInput.files = dt.files;
+      fileLabel.textContent = f.name; submitBtn.disabled = false;
     });
 
-    // --- Submit -----------------------------------------------------------
-    form.addEventListener("submit", async e => {
-      e.preventDefault();
+    // Submit
+    form.addEventListener("submit", async ev => {
+      ev.preventDefault();
       const file = fileInput.files[0];
       if (!file) return;
 
       submitBtn.disabled = true;
-      status.textContent = "Uploading…";
-      results.style.display = "none";
-
-      const body = new FormData();
-      body.append("file", file);
+      setStatus("Uploading and analysing…", false);
+      resultsEl.style.display = "none";
 
       try {
+        const body = new FormData();
+        body.append("file", file);
         const res  = await fetch(API_URL, { method: "POST", body });
         const json = await res.json();
-        resultsPre.textContent = JSON.stringify(json, null, 2);
-        results.style.display = "block";
-        status.textContent = res.ok ? "Done." : `Error ${res.status}`;
+
+        if (!res.ok) { setStatus("Error: " + (json.error || res.status), true); return; }
+
+        renderResults(json);
+        setStatus("", false);
+        resultsEl.style.display = "block";
       } catch (err) {
-        status.textContent = `Network error: ${err.message}`;
+        setStatus("Network error: " + err.message, true);
       } finally {
         submitBtn.disabled = false;
       }
     });
+
+    function setStatus(msg, isError) {
+      statusEl.textContent = msg;
+      statusEl.className   = isError ? "error" : "";
+    }
+
+    // -----------------------------------------------------------------
+    // Render helpers
+    // -----------------------------------------------------------------
+
+    function renderResults(data) {
+      renderSummary(data.summary);
+      renderFindings(data.findings);
+      renderGroupMeans(data.group_means);
+      renderAnova(data.anova);
+    }
+
+    function renderSummary(s) {
+      const grid = document.getElementById("summary-grid");
+      const items = [
+        ["Rows analysed",    s.n_rows.toLocaleString()],
+        ["Lots",             s.n_lots],
+        ["Wafers",           s.n_wafers],
+        ["Yield (pass %)",   s.continuity_pass_pct + " %"],
+        ["Mean resistance",  s.resistance_mean + " Ω"],
+        ["High-anneal rows", s.anneal_high_pct + " %"],
+      ];
+      grid.innerHTML = items.map(([l, v]) =>
+        `<div class="summary-item"><div class="s-label">${l}</div><div class="s-value">${v}</div></div>`
+      ).join("");
+    }
+
+    function renderFindings(f) {
+      const container = document.getElementById("findings-container");
+      container.innerHTML = `
+        <div class="finding significant">
+          <h3>${f.pattern1_title}
+            ${f.pattern1_significant ? '<span class="pill sig">p &lt; 0.05</span>' : ''}
+          </h3>
+          <div class="stat-row">
+            <div class="stat"><span class="label">Interaction F</span>
+              <span class="value highlight">${f.pattern1_interaction_F.toLocaleString()}</span></div>
+            <div class="stat"><span class="label">η² (effect size)</span>
+              <span class="value">${f.pattern1_interaction_eta_sq}</span></div>
+            <div class="stat"><span class="label">Tungsten uplift</span>
+              <span class="value highlight">+${f.pattern1_tungsten_uplift_pct} %</span></div>
+            <div class="stat"><span class="label">Copper change</span>
+              <span class="value">${f.pattern1_copper_delta_pct} %</span></div>
+          </div>
+        </div>
+
+        <div class="finding significant">
+          <h3>${f.pattern2_title}
+            ${f.pattern2_significant ? '<span class="pill sig">p &lt; 0.05</span>' : ''}
+          </h3>
+          <div class="stat-row">
+            <div class="stat"><span class="label">χ²</span>
+              <span class="value highlight">${f.pattern2_chi2}</span></div>
+            <div class="stat"><span class="label">Odds ratio</span>
+              <span class="value">${f.pattern2_odds_ratio}</span></div>
+            <div class="stat"><span class="label">Yield — low humidity</span>
+              <span class="value">${f.pattern2_yield_low_humidity} %</span></div>
+            <div class="stat"><span class="label">Yield — high humidity</span>
+              <span class="value highlight">${f.pattern2_yield_high_humidity} %</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGroupMeans(rows) {
+      const tbody = document.querySelector("#group-means-table tbody");
+      tbody.innerHTML = rows.map(r =>
+        `<tr><td>${r.via_type}</td><td>${r.anneal_group}</td>
+             <td>${r.mean}</td><td>${r.std}</td><td>${r.n.toLocaleString()}</td></tr>`
+      ).join("");
+    }
+
+    function renderAnova(rows) {
+      const tbody = document.querySelector("#anova-table tbody");
+      tbody.innerHTML = rows.map(r => {
+        const label = r.index
+          .replace("C(via_type):C(anneal_group)", "via_type × anneal_group (interaction)")
+          .replace("C(via_type)", "via_type")
+          .replace("C(anneal_group)", "anneal_group");
+        const F = isNaN(r.F) ? "—" : r.F.toFixed(2);
+        const p = isNaN(r["PR(>F)"]) ? "—" :
+                  r["PR(>F)"] < 0.001 ? "< 0.001" : r["PR(>F)"].toFixed(4);
+        const eta = isNaN(r.eta_sq) ? "—" : r.eta_sq.toFixed(4);
+        return `<tr><td>${label}</td><td>${F}</td><td>${p}</td><td>${eta}</td></tr>`;
+      }).join("");
+    }
   </script>
 
 </body>
