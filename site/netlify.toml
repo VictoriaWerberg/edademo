@@ -1,0 +1,10 @@
+# Netlify configuration
+# Publish directory is site/ — all files here are served as-is.
+
+[build]
+  publish = "."          # relative to site/ (set in Netlify dashboard: "Base dir = site")
+
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

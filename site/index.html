@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interconnect EDA</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #f1f5f9;
+    }
+
+    header p {
+      margin-top: 0.5rem;
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: #1e2330;
+      border: 1px solid #2d3548;
+      border-radius: 12px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 540px;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+      color: #cbd5e1;
+    }
+
+    .drop-zone {
+      border: 2px dashed #3b4566;
+      border-radius: 8px;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: #6366f1;
+      background: #1a1f35;
+    }
+
+    .drop-zone input[type="file"] {
+      display: none;
+    }
+
+    .drop-zone label {
+      display: block;
+      cursor: pointer;
+    }
+
+    .drop-zone .icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .drop-zone p {
+      color: #64748b;
+      font-size: 0.875rem;
+    }
+
+    .drop-zone p strong {
+      color: #818cf8;
+    }
+
+    #file-name {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      min-height: 1rem;
+    }
+
+    button[type="submit"] {
+      margin-top: 1.5rem;
+      width: 100%;
+      padding: 0.75rem;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button[type="submit"]:hover:not(:disabled) {
+      background: #4f46e5;
+    }
+
+    button[type="submit"]:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #status {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      min-height: 1.25rem;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    #results {
+      margin-top: 2rem;
+      width: 100%;
+      max-width: 540px;
+      display: none;
+    }
+
+    #results .card {
+      margin-bottom: 1rem;
+    }
+
+    pre {
+      background: #0f1117;
+      border-radius: 6px;
+      padding: 1rem;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      color: #a5f3fc;
+    }
+
+    .milestone-note {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: #475569;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Interconnect EDA</h1>
+    <p>Fab telemetry analysis — upload your data, get findings back instantly.</p>
+  </header>
+
+  <div class="card">
+    <h2>Upload data</h2>
+    <form id="upload-form">
+      <div class="drop-zone" id="drop-zone">
+        <label for="file-input">
+          <div class="icon">&#128193;</div>
+          <p><strong>Choose a file</strong> or drag it here</p>
+          <p>CSV — interconnect_measurements.csv to start</p>
+        </label>
+        <input type="file" id="file-input" accept=".csv,.zip" />
+      </div>
+      <div id="file-name"></div>
+      <button type="submit" id="submit-btn" disabled>Analyze</button>
+      <div id="status"></div>
+    </form>
+  </div>
+
+  <div id="results">
+    <div class="card">
+      <h2>Results</h2>
+      <pre id="results-pre"></pre>
+      <p class="milestone-note">Full charts and findings panels arrive in Milestones 4 – 6.</p>
+    </div>
+  </div>
+
+  <script>
+    // --- Config -----------------------------------------------------------
+    // Replace with your Heroku API URL once deployed.
+    const API_URL = "https://YOUR-APP.herokuapp.com/analyze";
+
+    // --- Elements ---------------------------------------------------------
+    const form      = document.getElementById("upload-form");
+    const dropZone  = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+    const fileLabel = document.getElementById("file-name");
+    const submitBtn = document.getElementById("submit-btn");
+    const status    = document.getElementById("status");
+    const results   = document.getElementById("results");
+    const resultsPre = document.getElementById("results-pre");
+
+    // --- File selection ---------------------------------------------------
+    fileInput.addEventListener("change", () => {
+      const f = fileInput.files[0];
+      if (f) {
+        fileLabel.textContent = f.name;
+        submitBtn.disabled = false;
+      }
+    });
+
+    // --- Drag-and-drop ---------------------------------------------------
+    ["dragenter", "dragover"].forEach(evt =>
+      dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.add("drag-over"); })
+    );
+    ["dragleave", "drop"].forEach(evt =>
+      dropZone.addEventListener(evt, e => { e.preventDefault(); dropZone.classList.remove("drag-over"); })
+    );
+    dropZone.addEventListener("drop", e => {
+      const f = e.dataTransfer.files[0];
+      if (f) {
+        // Assign to the hidden input so the form handler works uniformly
+        const dt = new DataTransfer();
+        dt.items.add(f);
+        fileInput.files = dt.files;
+        fileLabel.textContent = f.name;
+        submitBtn.disabled = false;
+      }
+    });
+
+    // --- Submit -----------------------------------------------------------
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      submitBtn.disabled = true;
+      status.textContent = "Uploading…";
+      results.style.display = "none";
+
+      const body = new FormData();
+      body.append("file", file);
+
+      try {
+        const res  = await fetch(API_URL, { method: "POST", body });
+        const json = await res.json();
+        resultsPre.textContent = JSON.stringify(json, null, 2);
+        results.style.display = "block";
+        status.textContent = res.ok ? "Done." : `Error ${res.status}`;
+      } catch (err) {
+        status.textContent = `Network error: ${err.message}`;
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+
+</body>
+</html>
