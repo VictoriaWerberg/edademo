@@ -110,7 +110,7 @@
         <label for="file-input">
           <div class="icon">&#128193;</div>
           <p><strong>Choose a file</strong> or drag it here</p>
-          <p>Single CSV (measurements) or ZIP of all four CSVs</p>
+          <p>Any CSV file, or a ZIP of all four interconnect CSVs</p>
         </label>
         <input type="file" id="file-input" accept=".csv,.zip" />
       </div>
@@ -223,10 +223,85 @@
     // -----------------------------------------------------------------
 
     function renderResults(data) {
-      renderSummary(data.summary);
-      renderFindings(data.findings);
-      renderGroupMeans(data.group_means);
-      renderAnova(data.anova);
+      if (data.mode === "generic") {
+        renderGeneric(data);
+      } else {
+        renderSummary(data.summary);
+        renderFindings(data.findings);
+        renderGroupMeans(data.group_means);
+        renderAnova(data.anova);
+      }
+    }
+
+    function renderGeneric(data) {
+      const r = document.getElementById("results");
+      r.innerHTML = `
+        <div class="card">
+          <h2>Dataset overview</h2>
+          <div class="summary-grid">
+            <div class="summary-item"><div class="s-label">Rows</div><div class="s-value">${data.n_rows.toLocaleString()}</div></div>
+            <div class="summary-item"><div class="s-label">Columns</div><div class="s-value">${data.n_cols}</div></div>
+            <div class="summary-item"><div class="s-label">Numeric cols</div><div class="s-value">${data.numeric_cols.length}</div></div>
+            <div class="summary-item"><div class="s-label">Categorical cols</div><div class="s-value">${data.categorical_cols.length}</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Column summary</h2>
+          <table>
+            <thead><tr><th>Column</th><th>Type</th><th>Unique</th><th>Missing</th></tr></thead>
+            <tbody>${data.col_summary.map(c =>
+              `<tr><td>${c.column}</td><td>${c.dtype}</td><td>${c.n_unique.toLocaleString()}</td>
+               <td>${c.missing > 0 ? `<span style="color:#f87171">${c.missing}</span>` : '0'}</td></tr>`
+            ).join("")}</tbody>
+          </table>
+        </div>
+
+        ${data.describe.length ? `
+        <div class="card">
+          <h2>Descriptive statistics</h2>
+          <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Stat</th>${data.numeric_cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+            <tbody>${data.describe.map(row =>
+              `<tr><td>${row.stat}</td>${data.numeric_cols.map(c =>
+                `<td>${row[c] !== undefined ? Number(row[c]).toLocaleString(undefined,{maximumFractionDigits:4}) : '—'}</td>`
+              ).join("")}</tr>`
+            ).join("")}</tbody>
+          </table>
+          </div>
+        </div>` : ""}
+
+        ${data.correlations.length && data.numeric_cols.length >= 2 ? `
+        <div class="card">
+          <h2>Correlation matrix</h2>
+          <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th></th>${data.numeric_cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+            <tbody>${data.correlations.map(row =>
+              `<tr><td style="color:#64748b">${row.column}</td>${data.numeric_cols.map(c => {
+                const v = row[c];
+                const abs = Math.abs(v);
+                const color = abs > 0.7 ? "#38bdf8" : abs > 0.4 ? "#94a3b8" : "#475569";
+                return `<td style="color:${color}">${v !== undefined ? v : '—'}</td>`;
+              }).join("")}</tr>`
+            ).join("")}</tbody>
+          </table>
+          </div>
+        </div>` : ""}
+
+        ${Object.keys(data.value_counts).length ? `
+        <div class="card">
+          <h2>Top values (categorical)</h2>
+          ${Object.entries(data.value_counts).map(([col, counts]) => `
+            <p style="color:#64748b;font-size:.8rem;margin:.75rem 0 .3rem">${col}</p>
+            <table>
+              <thead><tr><th>Value</th><th>Count</th></tr></thead>
+              <tbody>${counts.map(r => `<tr><td>${r.value}</td><td>${r.count.toLocaleString()}</td></tr>`).join("")}</tbody>
+            </table>
+          `).join("")}
+        </div>` : ""}
+      `;
     }
 
     function renderSummary(s) {
