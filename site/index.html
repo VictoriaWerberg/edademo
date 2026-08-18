@@ -234,72 +234,123 @@
     }
 
     function renderGeneric(data) {
-      const r = document.getElementById("results");
+      const r   = document.getElementById("results");
+      const ct  = data.col_types;
+      const corr = data.correlations;
+
       r.innerHTML = `
+
+        <!-- Overview -->
         <div class="card">
           <h2>Dataset overview</h2>
           <div class="summary-grid">
-            <div class="summary-item"><div class="s-label">Rows</div><div class="s-value">${data.n_rows.toLocaleString()}</div></div>
-            <div class="summary-item"><div class="s-label">Columns</div><div class="s-value">${data.n_cols}</div></div>
-            <div class="summary-item"><div class="s-label">Numeric cols</div><div class="s-value">${data.numeric_cols.length}</div></div>
-            <div class="summary-item"><div class="s-label">Categorical cols</div><div class="s-value">${data.categorical_cols.length}</div></div>
+            <div class="summary-item"><div class="s-label">Rows</div>
+              <div class="s-value">${data.shape.rows.toLocaleString()}</div></div>
+            <div class="summary-item"><div class="s-label">Columns</div>
+              <div class="s-value">${data.shape.cols}</div></div>
+            <div class="summary-item"><div class="s-label">Numeric</div>
+              <div class="s-value">${ct.numeric.length}</div></div>
+            <div class="summary-item"><div class="s-label">Categorical</div>
+              <div class="s-value">${ct.categorical.length}</div></div>
+            <div class="summary-item"><div class="s-label">Datetime</div>
+              <div class="s-value">${ct.datetime.length}</div></div>
+            <div class="summary-item"><div class="s-label">Duplicate rows</div>
+              <div class="s-value" style="color:${data.duplicate_rows > 0 ? '#f87171' : 'inherit'}">${data.duplicate_rows}</div></div>
           </div>
+          ${data.constant_cols.length ? `<p style="margin-top:.75rem;font-size:.8rem;color:#f87171">
+            Constant columns (no variation): ${data.constant_cols.join(", ")}</p>` : ""}
         </div>
 
+        <!-- Sample rows -->
         <div class="card">
-          <h2>Column summary</h2>
-          <table>
-            <thead><tr><th>Column</th><th>Type</th><th>Unique</th><th>Missing</th></tr></thead>
-            <tbody>${data.col_summary.map(c =>
-              `<tr><td>${c.column}</td><td>${c.dtype}</td><td>${c.n_unique.toLocaleString()}</td>
-               <td>${c.missing > 0 ? `<span style="color:#f87171">${c.missing}</span>` : '0'}</td></tr>`
-            ).join("")}</tbody>
-          </table>
-        </div>
-
-        ${data.describe.length ? `
-        <div class="card">
-          <h2>Descriptive statistics</h2>
+          <h2>Sample rows <span style="font-weight:400;color:#64748b;font-size:.8rem">(first 5)</span></h2>
           <div style="overflow-x:auto">
-          <table>
-            <thead><tr><th>Stat</th>${data.numeric_cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
-            <tbody>${data.describe.map(row =>
-              `<tr><td>${row.stat}</td>${data.numeric_cols.map(c =>
-                `<td>${row[c] !== undefined ? Number(row[c]).toLocaleString(undefined,{maximumFractionDigits:4}) : '—'}</td>`
-              ).join("")}</tr>`
-            ).join("")}</tbody>
-          </table>
+            <table>
+              <thead><tr>${data.sample_rows.columns.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+              <tbody>${data.sample_rows.rows.map(row =>
+                `<tr>${row.map(v => `<td>${v}</td>`).join("")}</tr>`
+              ).join("")}</tbody>
+            </table>
           </div>
+        </div>
+
+        <!-- Per-column profiles -->
+        <div class="card">
+          <h2>Column profiles</h2>
+          ${data.columns.map(col => `
+            <div style="border-top:1px solid #2d3548;padding:.9rem 0">
+              <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+                <span style="font-weight:600;color:#e2e8f0">${col.name}</span>
+                <span style="font-size:.7rem;padding:.1rem .4rem;border-radius:4px;background:#1a2030;color:#64748b">${col.dtype}</span>
+                <span style="font-size:.7rem;padding:.1rem .4rem;border-radius:4px;background:#1a2030;color:#94a3b8">${col.kind}</span>
+                ${col.looks_like_id ? `<span style="font-size:.7rem;padding:.1rem .4rem;border-radius:4px;background:#1e2a1e;color:#4ade80">ID-like</span>` : ""}
+                ${col.missing > 0 ? `<span style="font-size:.7rem;padding:.1rem .4rem;border-radius:4px;background:#2a1e1e;color:#f87171">${col.missing_pct}% missing</span>` : ""}
+              </div>
+              <div class="stat-row">
+                <div class="stat"><span class="label">Unique values</span><span class="value">${col.n_unique.toLocaleString()}</span></div>
+                ${col.kind === "numeric" ? `
+                  <div class="stat"><span class="label">Min</span><span class="value">${col.min}</span></div>
+                  <div class="stat"><span class="label">Max</span><span class="value">${col.max}</span></div>
+                  <div class="stat"><span class="label">Mean</span><span class="value">${col.mean}</span></div>
+                  <div class="stat"><span class="label">Median</span><span class="value">${col.median}</span></div>
+                  <div class="stat"><span class="label">Std</span><span class="value">${col.std}</span></div>
+                  <div class="stat"><span class="label">Skewness</span>
+                    <span class="value" style="color:${Math.abs(col.skewness)>1?'#f87171':'inherit'}">${col.skewness}</span></div>
+                  <div class="stat"><span class="label">Outliers (IQR)</span>
+                    <span class="value" style="color:${col.n_outliers_iqr>0?'#fbbf24':'inherit'}">${col.n_outliers_iqr}</span></div>
+                ` : ""}
+                ${col.kind === "datetime" ? `
+                  <div class="stat"><span class="label">From</span><span class="value">${col.min}</span></div>
+                  <div class="stat"><span class="label">To</span><span class="value">${col.max}</span></div>
+                  <div class="stat"><span class="label">Span (days)</span><span class="value">${col.span_days}</span></div>
+                ` : ""}
+                ${col.kind === "categorical" && col.top_values ? `
+                  <div class="stat"><span class="label">Rare values (&lt;1%)</span><span class="value">${col.rare_values}</span></div>
+                  <div style="width:100%;margin-top:.4rem">
+                    <span class="label" style="font-size:.7rem;color:#64748b">Top values: </span>
+                    ${col.top_values.slice(0,5).map(v =>
+                      `<span style="font-size:.75rem;margin:.15rem;padding:.15rem .4rem;background:#161c28;border-radius:4px;display:inline-block">
+                        ${v.value} <span style="color:#64748b">${v.pct}%</span></span>`
+                    ).join("")}
+                  </div>
+                ` : ""}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+
+        <!-- High-correlation pairs -->
+        ${corr.high_pairs && corr.high_pairs.length ? `
+        <div class="card">
+          <h2>High correlations <span style="font-weight:400;color:#64748b;font-size:.8rem">(|r| &gt; 0.7)</span></h2>
+          <table>
+            <thead><tr><th>Column A</th><th>Column B</th><th>r</th></tr></thead>
+            <tbody>${corr.high_pairs.map(p => `
+              <tr>
+                <td>${p.col_a}</td><td>${p.col_b}</td>
+                <td style="color:${p.r > 0 ? '#38bdf8' : '#f87171'}">${p.r}</td>
+              </tr>`).join("")}
+            </tbody>
+          </table>
         </div>` : ""}
 
-        ${data.correlations.length && data.numeric_cols.length >= 2 ? `
+        <!-- Full correlation matrix -->
+        ${corr.matrix && corr.matrix.length && corr.numeric_cols.length >= 2 ? `
         <div class="card">
           <h2>Correlation matrix</h2>
           <div style="overflow-x:auto">
-          <table>
-            <thead><tr><th></th>${data.numeric_cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
-            <tbody>${data.correlations.map(row =>
-              `<tr><td style="color:#64748b">${row.column}</td>${data.numeric_cols.map(c => {
-                const v = row[c];
-                const abs = Math.abs(v);
-                const color = abs > 0.7 ? "#38bdf8" : abs > 0.4 ? "#94a3b8" : "#475569";
-                return `<td style="color:${color}">${v !== undefined ? v : '—'}</td>`;
-              }).join("")}</tr>`
-            ).join("")}</tbody>
-          </table>
-          </div>
-        </div>` : ""}
-
-        ${Object.keys(data.value_counts).length ? `
-        <div class="card">
-          <h2>Top values (categorical)</h2>
-          ${Object.entries(data.value_counts).map(([col, counts]) => `
-            <p style="color:#64748b;font-size:.8rem;margin:.75rem 0 .3rem">${col}</p>
             <table>
-              <thead><tr><th>Value</th><th>Count</th></tr></thead>
-              <tbody>${counts.map(r => `<tr><td>${r.value}</td><td>${r.count.toLocaleString()}</td></tr>`).join("")}</tbody>
+              <thead><tr><th></th>${corr.numeric_cols.map(c => `<th>${c}</th>`).join("")}</tr></thead>
+              <tbody>${corr.matrix.map(row =>
+                `<tr><td style="color:#64748b">${row.column}</td>${corr.numeric_cols.map(c => {
+                  const v = row[c];
+                  const abs = Math.abs(v);
+                  const color = abs > 0.7 ? "#38bdf8" : abs > 0.4 ? "#94a3b8" : "#475569";
+                  return `<td style="color:${color}">${v !== undefined ? v : '—'}</td>`;
+                }).join("")}</tr>`
+              ).join("")}</tbody>
             </table>
-          `).join("")}
+          </div>
         </div>` : ""}
       `;
     }
