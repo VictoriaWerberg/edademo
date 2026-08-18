@@ -7,10 +7,11 @@ venv/
 dist/
 build/
 
-# Data files (may be large / contain real fab data)
-data/*.csv
+# Data files
+# Synthetic CSVs are committed so Heroku demo mode works.
+# Exclude only real/large uploads if you add them later.
 data/*.zip
-!data/.gitkeep
+!data/*.csv
 
 # Environment / secrets
 .env

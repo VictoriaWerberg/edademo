@@ -1,0 +1,9 @@
+via_type,layer,pitch_um,aspect_ratio,metal_stack,nominal_resistance_ohm
+copper,M1,0.18,5.0,COPPER-M1,0.8
+copper,M2,0.25,4.0,COPPER-M2,1.1
+copper,M3,0.36,3.5,COPPER-M3,1.4
+copper,M4,0.5,3.0,COPPER-M4,1.7
+tungsten,M1,0.18,5.0,TUNGSTEN-M1,1.0
+tungsten,M2,0.25,4.0,TUNGSTEN-M2,1.4
+tungsten,M3,0.36,3.5,TUNGSTEN-M3,1.8
+tungsten,M4,0.5,3.0,TUNGSTEN-M4,2.1
