@@ -191,7 +191,7 @@ def _coerce_dates(df: pd.DataFrame) -> pd.DataFrame:
             r"^\d{4}[-/]\d{2}[-/]\d{2}|^\d{2}[-/]\d{2}[-/]\d{4}"
         ).mean() > 0.8:
             try:
-                df[col] = pd.to_datetime(df[col], infer_datetime_format=True, errors="coerce")
+                df[col] = pd.to_datetime(df[col], errors="coerce")
             except Exception:
                 pass
     return df
