@@ -202,6 +202,18 @@
     .alert-info    { background:rgba(91,124,250,.1);  border:1px solid rgba(91,124,250,.25);color:#a5b8ff; }
     .alert-success { background:rgba(34,197,94,.1);   border:1px solid rgba(34,197,94,.25); color:#86efac; }
 
+    /* Custom chip delete button */
+    .chip-del { margin-left:.32rem; font-size:.62rem; color:var(--muted); opacity:.7; line-height:1; vertical-align:middle; }
+    .chip:hover .chip-del { color:#fff; opacity:.9; }
+    .chip-del:hover { color:var(--red) !important; opacity:1; }
+
+    /* Custom action form inputs */
+    .custom-input { width:100%; background:var(--surface); border:1px solid var(--border); border-radius:7px; color:var(--text); padding:.42rem .75rem; font-size:.83rem; }
+    .custom-input:focus { outline:none; border-color:var(--accent2); }
+    .custom-code  { width:100%; background:var(--code-bg); border:1px solid var(--border); border-radius:8px; color:#a8d8ff; font-family:'JetBrains Mono','Fira Code',monospace; font-size:.81rem; line-height:1.6; padding:.65rem .85rem; resize:vertical; }
+    .custom-code:focus { outline:none; border-color:var(--accent); }
+    .form-label { font-size:.75rem; color:var(--muted); display:block; margin-bottom:.25rem; }
+
     /* Misc */
     .row-flex { display:flex; gap:.65rem; align-items:center; flex-wrap:wrap; }
     .spacer { flex:1; }
@@ -337,6 +349,43 @@
     </h2>
     <div class="qa-primary-row" id="qaPrimary"></div>
     <div class="qa-groups" id="qaGroups"></div>
+  </div>
+
+  <!-- 3b. Custom quick actions -->
+  <div class="card">
+    <div class="row-flex" style="margin-bottom:.65rem;">
+      <h2 style="margin:0;">Custom quick actions</h2>
+      <span style="font-size:.72rem;color:var(--muted);">saved in your browser · survive page refresh</span>
+    </div>
+    <div class="qa-groups" id="customQaGroups"></div>
+    <details id="addCustomDetails" style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-top:.5rem;">
+      <summary style="cursor:pointer;font-size:.83rem;font-weight:600;list-style:none;display:flex;align-items:center;gap:.4rem;padding:.6rem .9rem;user-select:none;">
+        <span style="color:var(--accent);">＋</span> Add action
+      </summary>
+      <div style="padding:.7rem .9rem .85rem;display:flex;flex-direction:column;gap:.55rem;">
+        <div style="display:flex;gap:.55rem;flex-wrap:wrap;">
+          <div style="flex:1;min-width:150px;">
+            <label class="form-label">Action name (chip label)</label>
+            <input id="customActionName" class="custom-input" type="text" placeholder="e.g. Show top 20" />
+          </div>
+          <div style="flex:1;min-width:150px;">
+            <label class="form-label">Group</label>
+            <select id="customGroupSelect" class="custom-input" onchange="onCustomGroupChange()">
+              <option value="__new__">＋ New group…</option>
+            </select>
+          </div>
+        </div>
+        <div id="customGroupNameRow" style="display:none;">
+          <label class="form-label">New group name</label>
+          <input id="customGroupName" class="custom-input" type="text" placeholder="e.g. My checks" />
+        </div>
+        <div>
+          <label class="form-label">Code — <code style="color:var(--accent);">df</code> is your active file, assign to <code style="color:var(--accent);">result</code></label>
+          <textarea id="customActionCode" class="custom-code" rows="4" spellcheck="false" placeholder="result = df.head(20)"></textarea>
+        </div>
+        <div><button class="btn btn-primary" onclick="saveCustomAction()">&#10003; Save action</button></div>
+      </div>
+    </details>
   </div>
 
   <!-- 4. AI assistant -->
@@ -1022,8 +1071,97 @@ function renderInterconnectProfile(data) {
   setHtml('profileContent',html);
 }
 
+/* ── Custom quick actions ──────────────────────────────────────── */
+const CUSTOM_KEY = 'eda_custom_actions';
+
+function loadCustomData() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function persistCustomData(data) {
+  localStorage.setItem(CUSTOM_KEY, JSON.stringify(data));
+}
+
+function renderCustomGroups() {
+  const data  = loadCustomData();
+  const names = Object.keys(data);
+  const container = document.getElementById('customQaGroups');
+  const sel = document.getElementById('customGroupSelect');
+
+  // Refresh group dropdown
+  sel.innerHTML = '<option value="__new__">＋ New group…</option>' +
+    names.map(g => `<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('');
+
+  if (!names.length) { container.innerHTML = ''; return; }
+
+  container.innerHTML = names.map(groupName => {
+    const actions = data[groupName];
+    const chips = actions.map((a, i) =>
+      `<span class="chip" data-cg="${escHtml(groupName)}" data-ci="${i}">` +
+        `${escHtml(a.label)}` +
+        `<span class="chip-del" data-dg="${escHtml(groupName)}" data-di="${i}" title="Delete">✕</span>` +
+      `</span>`
+    ).join('');
+    return `<details class="qa-group" open>
+      <summary>⭐ ${escHtml(groupName)}<span class="qa-arrow">▶</span></summary>
+      <div class="qa-chips">${chips}</div>
+    </details>`;
+  }).join('');
+
+  // Remove old listener by replacing node
+  const fresh = container.cloneNode(true);
+  container.parentNode.replaceChild(fresh, container);
+  fresh.addEventListener('click', e => {
+    const del = e.target.closest('.chip-del');
+    if (del) { e.stopPropagation(); deleteCustomAction(del.dataset.dg, +del.dataset.di); return; }
+    const chip = e.target.closest('.chip');
+    if (!chip || chip.dataset.cg === undefined) return;
+    const d = loadCustomData();
+    const action = d[chip.dataset.cg]?.[+chip.dataset.ci];
+    if (!action) return;
+    document.getElementById('codeEditor').value = action.code;
+    runCode();
+  });
+}
+
+function onCustomGroupChange() {
+  const val = document.getElementById('customGroupSelect').value;
+  document.getElementById('customGroupNameRow').style.display = val === '__new__' ? '' : 'none';
+}
+
+function saveCustomAction() {
+  const name = document.getElementById('customActionName').value.trim();
+  const code = document.getElementById('customActionCode').value.trim();
+  const groupSel  = document.getElementById('customGroupSelect').value;
+  const newGrpVal = document.getElementById('customGroupName').value.trim();
+  if (!name) { alert('Enter an action name.'); return; }
+  if (!code) { alert('Enter the code.'); return; }
+  const groupName = groupSel === '__new__' ? (newGrpVal || 'Custom') : groupSel;
+  const data = loadCustomData();
+  if (!data[groupName]) data[groupName] = [];
+  data[groupName].push({ label: name, code });
+  persistCustomData(data);
+  // Reset form
+  document.getElementById('customActionName').value = '';
+  document.getElementById('customActionCode').value = '';
+  document.getElementById('customGroupName').value = '';
+  document.getElementById('addCustomDetails').removeAttribute('open');
+  renderCustomGroups();
+}
+
+function deleteCustomAction(groupName, idx) {
+  const data = loadCustomData();
+  if (!data[groupName]) return;
+  data[groupName].splice(idx, 1);
+  if (!data[groupName].length) delete data[groupName];
+  persistCustomData(data);
+  renderCustomGroups();
+}
+
 /* ── Init ──────────────────────────────────────────────────────── */
 renderQaGroups();
+renderCustomGroups();
 </script>
 </body>
 </html>
