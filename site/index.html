@@ -860,7 +860,15 @@ function setOutputLoading() {
 
 function renderOutput(data) {
   const p=document.getElementById('outputPanel'); p.className='output-panel';
-  if(data.type==='error'){p.innerHTML=`<pre style="color:var(--red);white-space:pre-wrap;">${escHtml(data.message)}</pre>`;return;}
+  if(data.type==='error'){
+    const msg = data.message || '';
+    const isExpired = msg.toLowerCase().includes('session not found') || msg.toLowerCase().includes('expired');
+    const extra = isExpired
+      ? `<div style="margin-top:.6rem;font-size:.8rem;color:var(--yellow);">&#9888; Server restarted and lost your session. Go to <strong>tab 1 · Upload</strong> and re-upload your file.</div>`
+      : '';
+    p.innerHTML=`<pre style="color:var(--red);white-space:pre-wrap;">${escHtml(msg)}</pre>${extra}`;
+    return;
+  }
   if(data.type==='image'){p.innerHTML=`<img src="data:image/png;base64,${data.data}" style="max-width:100%;border-radius:6px;" />`;return;}
   if(data.type==='dataframe'){
     const[r,c]=data.shape;
