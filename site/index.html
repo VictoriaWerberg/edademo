@@ -827,7 +827,7 @@ function setupViewEvents(root) {
       const a  = gs[gi]?.actions[ai]; if (!a) return;
       _lastChip = a.id ? { gi, ai } : null; // only track built-in chips (they use selCols)
       document.getElementById('codeEditor').value = groupActionCode(a);
-      runCode();
+      document.getElementById('codeEditor').focus();
     }
   });
 }
