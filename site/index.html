@@ -78,6 +78,13 @@
     .btn-secondary { background:var(--surface2); color:var(--text); border:1px solid var(--border); }
 
     /* ── Quick action groups (collapsible details) ───── */
+    /* Primary row — always open, 4 columns */
+    .qa-primary-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; margin-bottom:.7rem; }
+    @media (max-width:1000px) { .qa-primary-row { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:560px)  { .qa-primary-row { grid-template-columns:1fr 1fr; } }
+    .qa-group-flat { background:var(--surface2); border:1px solid var(--accent); border-radius:9px; overflow:hidden; }
+    .qa-group-flat .qa-group-hdr { display:flex; align-items:center; gap:.4rem; padding:.52rem .85rem .2rem; font-size:.8rem; font-weight:600; }
+    /* Secondary grid — collapsible, 2 columns */
     .qa-groups { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
     @media (max-width:900px) { .qa-groups { grid-template-columns:1fr; } }
 
@@ -328,6 +335,7 @@
         dashed border = needs a column selected · charts render inline
       </span>
     </h2>
+    <div class="qa-primary-row" id="qaPrimary"></div>
     <div class="qa-groups" id="qaGroups"></div>
   </div>
 
@@ -449,23 +457,24 @@ const TYPE_LABELS = {
 
 /* ── Quick action group definitions ────────────────────────────── */
 const QUICK_GROUPS = [
-  { id:'structure', icon:'📐', label:'Structure', open:true, actions:[
+  // ── Primary row (always visible) ────────────────────────────
+  { id:'firstlook', icon:'👀', label:'First look', primary:true, actions:[
+    { id:'head',    label:'head(10)'       },
+    { id:'sample',  label:'sample(10)'     },
+    { id:'tail',    label:'tail(5)'        },
+  ]},
+  { id:'structure', icon:'📐', label:'Structure', primary:true, actions:[
     { id:'shape',   label:'df.shape'       },
     { id:'info',    label:'df.info()'      },
     { id:'dtypes',  label:'dtypes'         },
     { id:'memory',  label:'memory usage'   },
   ]},
-  { id:'firstlook', icon:'👀', label:'First look', open:true, actions:[
-    { id:'head',    label:'head(10)'       },
-    { id:'sample',  label:'sample(10)'     },
-    { id:'tail',    label:'tail(5)'        },
-  ]},
-  { id:'cardinality', icon:'🔢', label:'Cardinality', open:false, actions:[
+  { id:'cardinality', icon:'🔢', label:'Cardinality', primary:true, actions:[
     { id:'nunique',          label:'nunique'           },
     { id:'value_counts',     label:'value_counts',      col:1 },
     { id:'value_counts_pct', label:'value_counts %',    col:1 },
   ]},
-  { id:'quality', icon:'🩺', label:'Data quality', open:true, actions:[
+  { id:'quality', icon:'🩺', label:'Data quality', primary:true, actions:[
     { id:'missing_count', label:'missing count' },
     { id:'missing_pct',   label:'missing %'     },
     { id:'duplicates',    label:'duplicate rows' },
@@ -598,29 +607,46 @@ function codeFor(id, c1, c2) {
 }
 
 /* ── Render quick action groups ────────────────────────────────── */
+function makeChips(actions) {
+  return actions.map(a => {
+    const needsCol = a.col ? ' needs-col' : '';
+    const title = a.col ? `Needs ${a.col} column${a.col>1?'s':''} selected` : '';
+    return `<span class="chip${needsCol}" data-action="${a.id}" title="${title}">${a.label}</span>`;
+  }).join('');
+}
+
 function renderQaGroups() {
-  const container = document.getElementById('qaGroups');
-  container.innerHTML = QUICK_GROUPS.map(g => {
-    const chips = g.actions.map(a => {
-      const needsCol = a.col ? ' needs-col' : '';
-      const title = a.col ? `Needs ${a.col} column${a.col>1?'s':''} selected` : '';
-      return `<span class="chip${needsCol}" data-action="${a.id}" title="${title}">${a.label}</span>`;
-    }).join('');
+  const primary   = QUICK_GROUPS.filter(g => g.primary);
+  const secondary = QUICK_GROUPS.filter(g => !g.primary);
+
+  // Primary row — flat cards, always visible
+  const primEl = document.getElementById('qaPrimary');
+  primEl.innerHTML = primary.map(g =>
+    `<div class="qa-group-flat">
+      <div class="qa-group-hdr">${g.icon} ${g.label}</div>
+      <div class="qa-chips">${makeChips(g.actions)}</div>
+    </div>`
+  ).join('');
+
+  // Secondary grid — collapsible
+  const secEl = document.getElementById('qaGroups');
+  secEl.innerHTML = secondary.map(g => {
     return `<details class="qa-group" ${g.open?'open':''}>
       <summary>${g.icon} ${g.label}<span class="qa-arrow">▶</span></summary>
-      <div class="qa-chips">${chips}</div>
+      <div class="qa-chips">${makeChips(g.actions)}</div>
     </details>`;
   }).join('');
 
-  // Delegate click
-  container.addEventListener('click', e => {
+  // Delegate click on both containers
+  function onChipClick(e) {
     const chip = e.target.closest('.chip'); if(!chip) return;
     const c1 = state.selCols[0] || null;
     const c2 = state.selCols[1] || null;
-    const code = codeFor(chip.dataset.action, c1, c2);
-    document.getElementById('codeEditor').value = code;
+    document.getElementById('codeEditor').value = codeFor(chip.dataset.action, c1, c2);
     runCode();
-  });
+  }
+  primEl.addEventListener('click', onChipClick);
+  secEl.addEventListener('click', onChipClick);
 }
 
 /* ── Utilities ─────────────────────────────────────────────────── */
@@ -856,6 +882,7 @@ function clearEditor() {
 function setOutputLoading() {
   const p=document.getElementById('outputPanel'); p.className='output-panel';
   p.innerHTML='<span class="spinner"></span> Running…';
+  p.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 function renderOutput(data) {
