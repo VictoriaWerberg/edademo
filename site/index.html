@@ -810,7 +810,10 @@ function groupActionCode(action) {
   const c1 = state.selCols[0] || null;
   const c2 = state.selCols[1] || null;
   if (action.id) return codeFor(action.id, c1, c2);
-  return action.code || '';
+  let code = action.code || '';
+  if (c1) code = code.replaceAll('{col1}', c1);
+  if (c2) code = code.replaceAll('{col2}', c2);
+  return code;
 }
 
 function toggleManageGroups() {
@@ -909,8 +912,8 @@ function renderAllGroups() {
             <select class="custom-input" id="addActGroup" style="padding:.4rem .7rem;">${groupOptions}</select>
           </div>
           <div style="grid-column:1/-1;">
-            <label class="form-label">Code <span style="color:var(--muted);">(assign final output to <code style="font-size:.74rem;">result</code>)</span></label>
-            <textarea class="custom-code" id="addActCode" rows="3" placeholder="result = df.head(10)"></textarea>
+            <label class="form-label">Code <span style="color:var(--muted);">(assign to <code style="font-size:.74rem;">result</code> · use <code style="font-size:.74rem;">{col1}</code> / <code style="font-size:.74rem;">{col2}</code> as column placeholders)</span></label>
+            <textarea class="custom-code" id="addActCode" rows="3" placeholder="result = df['{col1}'].describe()"></textarea>
           </div>
           <div style="grid-column:1/-1;display:flex;gap:.4rem;">
             <button class="btn btn-primary" style="font-size:.78rem;" onclick="saveNewViewAction()">＋ Save action</button>
@@ -948,7 +951,7 @@ function setupViewEvents(root) {
       const gs = loadGroups();
       const gi = +chip.dataset.gi, ai = +chip.dataset.ai;
       const a  = gs[gi]?.actions[ai]; if (!a) return;
-      _lastChip = a.id ? { gi, ai } : null; // only track built-in chips (they use selCols)
+      _lastChip = { gi, ai }; // track all chips so col change refreshes code
       document.getElementById('codeEditor').value = groupActionCode(a);
       document.getElementById('codeEditor').focus();
     }
@@ -1326,7 +1329,7 @@ function toggleCol(el) {
   if(_lastChip){
     const gs=loadGroups();
     const a=gs[_lastChip.gi]?.actions[_lastChip.ai];
-    if(a?.id) document.getElementById('codeEditor').value=groupActionCode(a);
+    if(a) document.getElementById('codeEditor').value=groupActionCode(a);
   }
 }
 
@@ -1471,7 +1474,10 @@ function tbGroupActionCode(action) {
   const c1 = state.tbSelCols[0] || null;
   const c2 = state.tbSelCols[1] || null;
   if (action.id) return codeForStat(action.id, c1, c2);
-  return action.code || '';
+  let code = action.code || '';
+  if (c1) code = code.replaceAll('{col1}', c1);
+  if (c2) code = code.replaceAll('{col2}', c2);
+  return code;
 }
 
 function toggleManageTbGroups() {
@@ -1566,8 +1572,8 @@ function renderAllTbGroups() {
             <select class="custom-input" id="tbAddActGroup" style="padding:.4rem .7rem;">${groupOptions}</select>
           </div>
           <div style="grid-column:1/-1;">
-            <label class="form-label">Code <span style="color:var(--muted);">(assign final output to <code style="font-size:.74rem;">result</code>; <code style="font-size:.74rem;">stats</code> = scipy.stats)</span></label>
-            <textarea class="custom-code" id="tbAddActCode" rows="3" placeholder="result = df.describe()"></textarea>
+            <label class="form-label">Code <span style="color:var(--muted);">(assign to <code style="font-size:.74rem;">result</code> · use <code style="font-size:.74rem;">{col1}</code> / <code style="font-size:.74rem;">{col2}</code> as column placeholders · <code style="font-size:.74rem;">stats</code> = scipy.stats)</span></label>
+            <textarea class="custom-code" id="tbAddActCode" rows="3" placeholder="result = df['{col1}'].describe()"></textarea>
           </div>
           <div style="grid-column:1/-1;display:flex;gap:.4rem;">
             <button class="btn btn-primary" style="font-size:.78rem;" onclick="saveNewTbViewAction()">＋ Save action</button>
@@ -1677,7 +1683,7 @@ function setupTbViewEvents(root) {
       const gs = loadTbGroups();
       const gi = +chip.dataset.gi, ai = +chip.dataset.ai;
       const a  = gs[gi]?.actions[ai]; if (!a) return;
-      tb_lastChip = a.id ? { gi, ai } : null;
+      tb_lastChip = { gi, ai };
       document.getElementById('tbCodeEditor').value = tbGroupActionCode(a);
       document.getElementById('tbCodeEditor').focus();
     }
@@ -1797,7 +1803,7 @@ function toggleTbCol(el) {
   if (tb_lastChip) {
     const gs = loadTbGroups();
     const a = gs[tb_lastChip.gi]?.actions[tb_lastChip.ai];
-    if (a?.id) document.getElementById('tbCodeEditor').value = tbGroupActionCode(a);
+    if (a) document.getElementById('tbCodeEditor').value = tbGroupActionCode(a);
   }
 }
 
