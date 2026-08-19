@@ -111,6 +111,15 @@ def _to_json(obj: Any) -> dict:
         sample = obj.head(200).copy()
         for col in sample.select_dtypes(include="datetime").columns:
             sample[col] = sample[col].astype(str)
+        # If the index carries meaningful labels (describe(), groupby, etc.)
+        # include it as the first column so labels show up in the table.
+        is_default = (
+            isinstance(sample.index, pd.RangeIndex)
+            and sample.index.start == 0
+            and sample.index.step == 1
+        )
+        if not is_default:
+            sample = sample.reset_index()
         return {
             "type":    "dataframe",
             "columns": sample.columns.tolist(),
