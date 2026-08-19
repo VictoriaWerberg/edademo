@@ -202,6 +202,36 @@
     .alert-info    { background:rgba(91,124,250,.1);  border:1px solid rgba(91,124,250,.25);color:#a5b8ff; }
     .alert-success { background:rgba(34,197,94,.1);   border:1px solid rgba(34,197,94,.25); color:#86efac; }
 
+    /* ── Manage mode ─────────────────────────────────── */
+    .gm-list { display:flex; flex-direction:column; gap:.45rem; }
+    .gm-group { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:.6rem .8rem; transition:border-color .15s; }
+    .gm-group.dnd-over { border-color:var(--accent); background:rgba(91,124,250,.08); }
+    .gm-group.dnd-dragging { opacity:.35; }
+    .gm-hdr { display:flex; align-items:center; gap:.38rem; margin-bottom:.48rem; flex-wrap:wrap; }
+    .gm-drag-h { cursor:grab; color:var(--muted); font-size:.85rem; padding:0 .12rem; user-select:none; }
+    .gm-drag-h:active { cursor:grabbing; }
+    .gm-icon-inp { width:34px; text-align:center; font-size:.95rem; background:none; border:1px solid transparent; border-radius:5px; color:var(--text); padding:.18rem .2rem; }
+    .gm-icon-inp:focus { outline:none; border-color:var(--border); }
+    .gm-name-inp { flex:1; min-width:80px; font-weight:600; font-size:.86rem; background:none; border:none; border-bottom:1px solid transparent; color:var(--text); padding:.18rem .25rem; }
+    .gm-name-inp:focus { outline:none; border-bottom-color:var(--accent); }
+    .gm-pin-btn { background:none; border:none; cursor:pointer; font-size:.82rem; opacity:.35; padding:0 .15rem; transition:opacity .15s; }
+    .gm-pin-btn.pinned { opacity:1; }
+    .gm-pin-btn:hover { opacity:1; }
+    .gm-del-btn { background:none; border:none; cursor:pointer; font-size:.82rem; color:var(--muted); padding:0 .15rem; }
+    .gm-del-btn:hover { color:var(--red); }
+    .gm-chips-zone { display:flex; flex-wrap:wrap; gap:.35rem; align-items:center; min-height:32px; border-radius:6px; transition:background .15s; }
+    .gm-chips-zone.dnd-over { background:rgba(91,124,250,.12); outline:1px dashed var(--accent); }
+    .gm-chip { display:inline-flex; align-items:center; gap:.2rem; padding:.22rem .5rem; border-radius:999px; background:var(--surface); border:1px solid var(--border); font-size:.75rem; }
+    .gm-chip.dnd-over { border-color:var(--accent); background:rgba(91,124,250,.15); }
+    .gm-chip.dnd-dragging { opacity:.3; }
+    .gm-chip-inp { background:none; border:none; color:var(--text); font-size:.75rem; min-width:40px; max-width:130px; padding:0; cursor:text; }
+    .gm-chip-inp:focus { outline:none; color:var(--accent); }
+    .gm-chip-del { background:none; border:none; color:var(--muted); cursor:pointer; font-size:.68rem; padding:0; line-height:1; }
+    .gm-chip-del:hover { color:var(--red); }
+    .gm-add-chip-btn { padding:.18rem .52rem; border-radius:999px; background:none; border:1px dashed var(--border); font-size:.73rem; color:var(--muted); cursor:pointer; }
+    .gm-add-chip-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .gm-add-form { display:flex; gap:.3rem; flex-wrap:wrap; align-items:flex-start; width:100%; margin-top:.3rem; }
+
     /* Custom chip delete button */
     .chip-del { margin-left:.32rem; font-size:.62rem; color:var(--muted); opacity:.7; line-height:1; vertical-align:middle; }
     .chip:hover .chip-del { color:#fff; opacity:.9; }
@@ -621,8 +651,9 @@ function codeFor(id, c1, c2) {
 
 /* ── Unified group management ──────────────────────────────────── */
 const GROUPS_KEY = 'eda_groups_v2';
-let gmManage  = false;
-let gmEditGi  = null;   // group index whose actions panel is open
+let gmManage     = false;
+let gmAddingToGi = null;   // which group's "+ Add action" inline form is open
+let _dragItem    = null;   // {type:'group'|'chip', gi, ai}
 
 function loadGroups() {
   try {
@@ -651,64 +682,75 @@ function groupActionCode(action) {
 
 function toggleManageGroups() {
   gmManage = !gmManage;
-  if (!gmManage) gmEditGi = null;
-  document.getElementById('btnManageGroups').textContent = gmManage ? '✕ Exit manage' : '⚙ Manage';
+  if (!gmManage) gmAddingToGi = null;
+  document.getElementById('btnManageGroups').textContent = gmManage ? '✓ Done' : '⚙ Manage';
   renderAllGroups();
 }
 
+/* ── Collect current DOM input values → groups array ─────────── */
+function collectEditsFromDom(root) {
+  const gs = loadGroups();
+  root.querySelectorAll('[data-af="gname"]').forEach(inp => {
+    const gi = +inp.dataset.gi; if (gs[gi]) gs[gi].label = inp.value.trim() || gs[gi].label;
+  });
+  root.querySelectorAll('[data-af="gicon"]').forEach(inp => {
+    const gi = +inp.dataset.gi; if (gs[gi]) gs[gi].icon = inp.value.trim();
+  });
+  root.querySelectorAll('[data-af="aname"]').forEach(inp => {
+    const gi=+inp.dataset.gi, ai=+inp.dataset.ai;
+    if (gs[gi]?.actions[ai]) gs[gi].actions[ai].label = inp.value.trim() || gs[gi].actions[ai].label;
+  });
+  return gs;
+}
+
+/* ── Main render ──────────────────────────────────────────────── */
 function renderAllGroups() {
   const groups = loadGroups();
   const cont   = document.getElementById('allGroupsContainer');
 
   if (gmManage) {
-    /* ── Manage mode ────────────────────────────────────────── */
+    /* ── Manage mode: drag-and-drop list ────────────────────── */
     const rows = groups.map((g, gi) => {
-      const editing = gmEditGi === gi;
-      const actRows = editing ? `
-        <div style="margin-top:.5rem;padding:.55rem .7rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
-          <div style="font-size:.72rem;color:var(--muted);margin-bottom:.38rem;">Actions — ↑↓ reorder · rename · ✕ delete</div>
-          ${g.actions.map((a,ai) => `
-            <div style="display:flex;gap:.28rem;align-items:center;margin-bottom:.25rem;">
-              <button class="btn btn-secondary" style="padding:.13rem .34rem;font-size:.69rem;" data-ma="a-up"   data-gi="${gi}" data-ai="${ai}">↑</button>
-              <button class="btn btn-secondary" style="padding:.13rem .34rem;font-size:.69rem;" data-ma="a-down" data-gi="${gi}" data-ai="${ai}">↓</button>
-              <input  class="custom-input" type="text" data-af="aname" data-gi="${gi}" data-ai="${ai}"
-                value="${escHtml(a.label)}" style="flex:1;font-size:.78rem;padding:.28rem .55rem;" />
-              <button class="btn btn-secondary" style="padding:.13rem .34rem;font-size:.69rem;color:var(--red);" data-ma="a-del" data-gi="${gi}" data-ai="${ai}">✕</button>
-            </div>`).join('')}
-          <div style="display:flex;gap:.3rem;margin-top:.45rem;flex-wrap:wrap;">
-            <input  class="custom-input" type="text"     id="newAN_${gi}" placeholder="Action name"         style="flex:1;min-width:110px;font-size:.78rem;padding:.28rem .55rem;" />
-            <textarea class="custom-code"                id="newAC_${gi}" placeholder="result = df.head(10)" style="flex:2;min-width:160px;font-size:.76rem;padding:.28rem .55rem;min-height:52px;resize:vertical;"></textarea>
-            <button class="btn btn-primary" style="font-size:.74rem;padding:.26rem .6rem;" data-ma="a-add" data-gi="${gi}">＋ Add</button>
-          </div>
-        </div>` : '';
+      const chips = g.actions.map((a, ai) => `
+        <span class="gm-chip" draggable="true" data-dnd="chip" data-gi="${gi}" data-ai="${ai}">
+          <span class="gm-drag-h" title="Drag to reorder or move to another group">⠿</span>
+          <input class="gm-chip-inp" type="text" data-af="aname" data-gi="${gi}" data-ai="${ai}" value="${escHtml(a.label)}" />
+          <button class="gm-chip-del" data-ma="a-del" data-gi="${gi}" data-ai="${ai}" title="Remove">✕</button>
+        </span>`).join('');
+
+      const addForm = gmAddingToGi === gi ? `
+        <div class="gm-add-form">
+          <input  class="custom-input" id="newAN_${gi}" type="text" placeholder="Name" style="flex:1;min-width:90px;" />
+          <textarea class="custom-code" id="newAC_${gi}" rows="2" placeholder="result = df.head(10)" style="flex:2;min-width:150px;min-height:46px;font-size:.76rem;padding:.28rem .55rem;"></textarea>
+          <button class="btn btn-primary"   data-ma="a-add"        data-gi="${gi}" style="font-size:.74rem;padding:.24rem .55rem;">＋</button>
+          <button class="btn btn-secondary" data-ma="a-add-cancel" data-gi="${gi}" style="font-size:.74rem;padding:.24rem .55rem;">✕</button>
+        </div>` : `
+        <button class="gm-add-chip-btn" data-ma="show-add" data-gi="${gi}">＋ action</button>`;
 
       return `
-        <div style="display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;padding:.48rem .65rem;
-                    background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.32rem;"
-             data-gi="${gi}">
-          <button class="btn btn-secondary" style="padding:.15rem .37rem;font-size:.7rem;" data-ma="g-up"   data-gi="${gi}">↑</button>
-          <button class="btn btn-secondary" style="padding:.15rem .37rem;font-size:.7rem;" data-ma="g-down" data-gi="${gi}">↓</button>
-          <input  class="custom-input" type="text" data-af="gicon"  data-gi="${gi}"
-            value="${escHtml(g.icon||'')}" style="width:40px;text-align:center;font-size:.95rem;padding:.28rem .3rem;" title="Emoji icon" />
-          <input  class="custom-input" type="text" data-af="gname"  data-gi="${gi}"
-            value="${escHtml(g.label)}" style="flex:1;min-width:100px;font-weight:600;font-size:.83rem;" />
-          <label style="display:flex;align-items:center;gap:.25rem;font-size:.75rem;cursor:pointer;white-space:nowrap;">
-            <input type="checkbox" data-af="gprimary" data-gi="${gi}" ${g.primary?'checked':''} style="accent-color:var(--accent);" />
-            Always visible
-          </label>
-          <button class="btn btn-secondary" style="font-size:.72rem;padding:.18rem .5rem;${editing?'color:var(--accent);border-color:var(--accent);':''}"
-            data-ma="g-edit-actions" data-gi="${gi}">✏ Actions (${g.actions.length})</button>
-          <button class="btn btn-secondary" style="font-size:.72rem;padding:.18rem .5rem;color:var(--red);" data-ma="g-del" data-gi="${gi}">🗑</button>
-          ${actRows}
+        <div class="gm-group" draggable="true" data-dnd="group" data-gi="${gi}">
+          <div class="gm-hdr">
+            <span class="gm-drag-h gm-drag-group" title="Drag to reorder group">⠿</span>
+            <input class="gm-icon-inp" type="text" data-af="gicon" data-gi="${gi}" value="${escHtml(g.icon||'')}" title="Emoji icon" />
+            <input class="gm-name-inp" type="text" data-af="gname" data-gi="${gi}" value="${escHtml(g.label)}" />
+            <button class="gm-pin-btn${g.primary?' pinned':''}" data-ma="g-pin" data-gi="${gi}" title="${g.primary?'Unpin from top row':'Pin to always-visible row'}">📌</button>
+            <button class="gm-del-btn" data-ma="g-del" data-gi="${gi}" title="Delete group">🗑</button>
+          </div>
+          <div class="gm-chips-zone" data-drop-gi="${gi}">
+            ${chips}
+            ${addForm}
+          </div>
         </div>`;
     }).join('');
 
     cont.innerHTML = `
-      <div>${rows}</div>
-      <div style="display:flex;gap:.4rem;margin-top:.55rem;flex-wrap:wrap;">
-        <button class="btn btn-secondary" style="font-size:.78rem;" data-ma="g-add">＋ New group</button>
-        <button class="btn btn-primary"   style="font-size:.78rem;" data-ma="save-manage">✓ Done managing</button>
+      <div class="gm-list" id="gmList">${rows}</div>
+      <div style="display:flex;gap:.4rem;margin-top:.55rem;">
+        <button class="btn btn-secondary" data-ma="g-add" style="font-size:.78rem;border-style:dashed;">＋ New group</button>
       </div>`;
+
+    setupManageEvents(cont);
+    setupDnD(cont);
 
   } else {
     /* ── View mode ──────────────────────────────────────────── */
@@ -723,112 +765,196 @@ function renderAllGroups() {
       }).join('') || `<span style="font-size:.74rem;color:var(--muted);">No actions.</span>`;
     }
 
-    const primHtml = primGroups.length
-      ? `<div class="qa-primary-row" style="margin-bottom:.6rem;">${
-          primGroups.map(g => `<div class="qa-group-flat">
-            <div class="qa-group-hdr">${escHtml(g.icon||'•')} ${escHtml(g.label)}</div>
-            <div class="qa-chips">${chipRow(g)}</div>
-          </div>`).join('')
-        }</div>` : '';
+    const primHtml = primGroups.length ? `
+      <div class="qa-primary-row" style="margin-bottom:.6rem;">${
+        primGroups.map(g => `<div class="qa-group-flat">
+          <div class="qa-group-hdr">${escHtml(g.icon||'•')} ${escHtml(g.label)}</div>
+          <div class="qa-chips">${chipRow(g)}</div>
+        </div>`).join('')
+      }</div>` : '';
 
-    const secHtml = secGroups.length
-      ? `<div class="qa-groups">${
-          secGroups.map(g => `<details class="qa-group" ${g.open?'open':''}>
-            <summary>${escHtml(g.icon||'•')} ${escHtml(g.label)}<span class="qa-arrow">▶</span></summary>
-            <div class="qa-chips">${chipRow(g)}</div>
-          </details>`).join('')
-        }</div>` : '';
+    const secHtml = secGroups.length ? `
+      <div class="qa-groups">${
+        secGroups.map(g => `<details class="qa-group" ${g.open?'open':''}>
+          <summary>${escHtml(g.icon||'•')} ${escHtml(g.label)}<span class="qa-arrow">▶</span></summary>
+          <div class="qa-chips">${chipRow(g)}</div>
+        </details>`).join('')
+      }</div>` : '';
 
     cont.innerHTML = primHtml + secHtml;
-  }
 
-  /* ── Event delegation (shared for both modes) ─────────────── */
-  const fresh = cont.cloneNode(true);
-  cont.parentNode.replaceChild(fresh, cont);
-
-  // Collect current manage-mode input values into a groups copy
-  function collectEdits() {
-    const gs = loadGroups();
-    fresh.querySelectorAll('[data-af="gname"]').forEach(inp   => { const gi=+inp.dataset.gi; if(gs[gi]) gs[gi].label   = inp.value.trim() || gs[gi].label; });
-    fresh.querySelectorAll('[data-af="gicon"]').forEach(inp   => { const gi=+inp.dataset.gi; if(gs[gi]) gs[gi].icon    = inp.value.trim(); });
-    fresh.querySelectorAll('[data-af="gprimary"]').forEach(cb => { const gi=+cb.dataset.gi;  if(gs[gi]) gs[gi].primary = cb.checked; });
-    fresh.querySelectorAll('[data-af="aname"]').forEach(inp   => {
-      const gi=+inp.dataset.gi, ai=+inp.dataset.ai;
-      if(gs[gi]?.actions[ai]) gs[gi].actions[ai].label = inp.value.trim() || gs[gi].actions[ai].label;
+    // View-mode click delegation
+    const fresh = cont.cloneNode(true);
+    cont.parentNode.replaceChild(fresh, cont);
+    fresh.addEventListener('click', e => {
+      const el = e.target.closest('[data-ma="run"]'); if (!el) return;
+      const gs = loadGroups();
+      const a  = gs[+el.dataset.gi]?.actions[+el.dataset.ai]; if (!a) return;
+      document.getElementById('codeEditor').value = groupActionCode(a);
+      runCode();
     });
-    return gs;
   }
+}
 
-  fresh.addEventListener('click', e => {
+/* ── Manage-mode events ───────────────────────────────────────── */
+function setupManageEvents(root) {
+  // Auto-save name inputs on blur
+  root.addEventListener('blur', e => {
+    if (e.target.dataset.af) saveGroupsData(collectEditsFromDom(root));
+  }, true);
+
+  root.addEventListener('click', e => {
+    if (e.target.closest('.gm-chip-inp, .gm-name-inp, .gm-icon-inp')) return; // let inputs handle
     const el = e.target.closest('[data-ma]'); if (!el) return;
     const { ma, gi: giS, ai: aiS } = el.dataset;
     const gi = giS !== undefined ? +giS : undefined;
     const ai = aiS !== undefined ? +aiS : undefined;
 
-    if (ma === 'run') {
-      const gs = loadGroups();
-      const a  = gs[gi]?.actions[ai]; if (!a) return;
-      document.getElementById('codeEditor').value = groupActionCode(a);
-      runCode();
-
-    } else if (ma === 'g-up' || ma === 'g-down') {
-      const gs = collectEdits();
-      const ni = gi + (ma === 'g-up' ? -1 : 1);
-      if (ni < 0 || ni >= gs.length) return;
-      [gs[gi], gs[ni]] = [gs[ni], gs[gi]];
-      if (gmEditGi === gi) gmEditGi = ni; else if (gmEditGi === ni) gmEditGi = gi;
-      saveGroupsData(gs); renderAllGroups();
-
-    } else if (ma === 'g-del') {
-      const gs = collectEdits();
-      gs.splice(gi, 1);
-      if (gmEditGi === gi) gmEditGi = null; else if (gmEditGi > gi) gmEditGi--;
-      saveGroupsData(gs); renderAllGroups();
-
-    } else if (ma === 'g-add') {
-      const gs = collectEdits();
-      gs.push({ icon: '⭐', label: 'New group', primary: false, open: false, actions: [] });
-      gmEditGi = gs.length - 1;
-      saveGroupsData(gs); renderAllGroups();
-
-    } else if (ma === 'g-edit-actions') {
-      const gs = collectEdits();
-      saveGroupsData(gs);
-      gmEditGi = gmEditGi === gi ? null : gi;
-      renderAllGroups();
-
-    } else if (ma === 'a-up' || ma === 'a-down') {
-      const gs = collectEdits();
-      const acts = gs[gi]?.actions; if (!acts) return;
-      const ni = ai + (ma === 'a-up' ? -1 : 1);
-      if (ni < 0 || ni >= acts.length) return;
-      [acts[ai], acts[ni]] = [acts[ni], acts[ai]];
-      saveGroupsData(gs); renderAllGroups();
-
-    } else if (ma === 'a-del') {
-      const gs = collectEdits();
+    if (ma === 'a-del') {
+      const gs = collectEditsFromDom(root);
       gs[gi]?.actions.splice(ai, 1);
       saveGroupsData(gs); renderAllGroups();
 
-    } else if (ma === 'a-add') {
-      const nameEl = fresh.querySelector(`#newAN_${gi}`);
-      const codeEl = fresh.querySelector(`#newAC_${gi}`);
-      const name = nameEl?.value.trim(), code = codeEl?.value.trim();
-      if (!name || !code) { alert('Enter both name and code.'); return; }
-      const gs = collectEdits();
-      if (!gs[gi]) return;
-      gs[gi].actions.push({ label: name, code });
-      saveGroupsData(gs);
-      if (nameEl) nameEl.value = '';
-      if (codeEl) codeEl.value = '';
-      renderAllGroups();
+    } else if (ma === 'g-del') {
+      const gs = collectEditsFromDom(root);
+      gs.splice(gi, 1);
+      saveGroupsData(gs); renderAllGroups();
 
-    } else if (ma === 'save-manage') {
-      saveGroupsData(collectEdits());
-      gmManage = false; gmEditGi = null;
-      document.getElementById('btnManageGroups').textContent = '⚙ Manage';
-      renderAllGroups();
+    } else if (ma === 'g-pin') {
+      const gs = collectEditsFromDom(root);
+      if (gs[gi]) gs[gi].primary = !gs[gi].primary;
+      saveGroupsData(gs); renderAllGroups();
+
+    } else if (ma === 'g-add') {
+      const gs = collectEditsFromDom(root);
+      gs.push({ icon: '⭐', label: 'New group', primary: false, open: false, actions: [] });
+      gmAddingToGi = gs.length - 1;
+      saveGroupsData(gs); renderAllGroups();
+
+    } else if (ma === 'show-add') {
+      saveGroupsData(collectEditsFromDom(root));
+      gmAddingToGi = gi; renderAllGroups();
+
+    } else if (ma === 'a-add-cancel') {
+      gmAddingToGi = null; renderAllGroups();
+
+    } else if (ma === 'a-add') {
+      const nameEl = root.querySelector(`#newAN_${gi}`);
+      const codeEl = root.querySelector(`#newAC_${gi}`);
+      const name = nameEl?.value.trim(), code = codeEl?.value.trim();
+      if (!name || !code) { alert('Enter both a name and code.'); return; }
+      const gs = collectEditsFromDom(root);
+      gs[gi]?.actions.push({ label: name, code });
+      gmAddingToGi = null;
+      saveGroupsData(gs); renderAllGroups();
     }
+  });
+}
+
+/* ── Drag-and-drop ────────────────────────────────────────────── */
+function setupDnD(root) {
+  function clearHighlights() {
+    root.querySelectorAll('.dnd-over').forEach(el => el.classList.remove('dnd-over'));
+  }
+
+  // ── Group drag (reorder groups) ──
+  root.querySelectorAll('[data-dnd="group"]').forEach(groupEl => {
+    const gi = +groupEl.dataset.gi;
+
+    groupEl.addEventListener('dragstart', e => {
+      if (!e.target.classList.contains('gm-drag-group')) { e.preventDefault(); return; }
+      _dragItem = { type: 'group', gi };
+      groupEl.classList.add('dnd-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    groupEl.addEventListener('dragend', () => {
+      groupEl.classList.remove('dnd-dragging');
+      clearHighlights();
+      _dragItem = null;
+    });
+
+    groupEl.addEventListener('dragover', e => {
+      if (_dragItem?.type !== 'group') return;
+      e.preventDefault(); e.stopPropagation();
+      clearHighlights();
+      groupEl.classList.add('dnd-over');
+    });
+
+    groupEl.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (_dragItem?.type !== 'group' || _dragItem.gi === gi) return;
+      const gs = collectEditsFromDom(root);
+      const [moved] = gs.splice(_dragItem.gi, 1);
+      gs.splice(gi, 0, moved);
+      saveGroupsData(gs);
+      _dragItem = null;
+      renderAllGroups();
+    });
+  });
+
+  // ── Chip drag (reorder within group or move to another group) ──
+  root.querySelectorAll('[data-dnd="chip"]').forEach(chipEl => {
+    const gi = +chipEl.dataset.gi, ai = +chipEl.dataset.ai;
+
+    chipEl.addEventListener('dragstart', e => {
+      _dragItem = { type: 'chip', gi, ai };
+      chipEl.classList.add('dnd-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+    });
+
+    chipEl.addEventListener('dragend', () => {
+      chipEl.classList.remove('dnd-dragging');
+      clearHighlights();
+      _dragItem = null;
+    });
+
+    // Drop on another chip → insert before it
+    chipEl.addEventListener('dragover', e => {
+      if (_dragItem?.type !== 'chip') return;
+      e.preventDefault(); e.stopPropagation();
+      clearHighlights();
+      chipEl.classList.add('dnd-over');
+    });
+
+    chipEl.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (_dragItem?.type !== 'chip') return;
+      const { gi: fromGi, ai: fromAi } = _dragItem;
+      const toGi = gi, toAi = ai;
+      if (fromGi === toGi && fromAi === toAi) return;
+      const gs = collectEditsFromDom(root);
+      const [moved] = gs[fromGi].actions.splice(fromAi, 1);
+      const insertAt = (fromGi === toGi && fromAi < toAi) ? toAi - 1 : toAi;
+      gs[toGi].actions.splice(insertAt, 0, moved);
+      saveGroupsData(gs);
+      _dragItem = null;
+      renderAllGroups();
+    });
+  });
+
+  // Drop on empty chip zone → append to that group
+  root.querySelectorAll('.gm-chips-zone').forEach(zone => {
+    const toGi = +zone.dataset.dropGi;
+    zone.addEventListener('dragover', e => {
+      if (_dragItem?.type !== 'chip') return;
+      e.preventDefault();
+      clearHighlights();
+      zone.classList.add('dnd-over');
+    });
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      if (_dragItem?.type !== 'chip') return;
+      const { gi: fromGi, ai: fromAi } = _dragItem;
+      if (fromGi === toGi) return; // chip-on-chip handler takes this
+      const gs = collectEditsFromDom(root);
+      const [moved] = gs[fromGi].actions.splice(fromAi, 1);
+      gs[toGi].actions.push(moved);
+      saveGroupsData(gs);
+      _dragItem = null;
+      renderAllGroups();
+    });
   });
 }
 
