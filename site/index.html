@@ -811,8 +811,10 @@ function groupActionCode(action) {
   const c2 = state.selCols[1] || null;
   if (action.id) return codeFor(action.id, c1, c2);
   let code = action.code || '';
-  if (c1) code = code.replaceAll('{col1}', c1);
-  if (c2) code = code.replaceAll('{col2}', c2);
+  code = code.replaceAll('{col1}', c1 || 'COLUMN_NAME');
+  code = code.replaceAll('{col2}', c2 || 'COLUMN_NAME');
+  if (c1) code = code.replaceAll("'COLUMN_NAME'", `'${c1}'`).replaceAll('"COLUMN_NAME"', `'${c1}'`);
+  if (c2) code = code.replaceAll("'COLUMN_2'", `'${c2}'`).replaceAll('"COLUMN_2"', `'${c2}'`);
   return code;
 }
 
@@ -1291,9 +1293,21 @@ function renderExploreColSelector() {
 function toggleCol(el) {
   const col=el.dataset.col;
   const editor=document.getElementById('codeEditor');
+  const addCode=document.getElementById('addActCode');
 
-  // Code editor is focused → insert column name at cursor position
-  if(document.activeElement===editor){
+  // "Add action" code box focused → insert {col1}/{col2} placeholder
+  if(document.activeElement===addCode){
+    const nextSlot=addCode.value.includes('{col1}')?'{col2}':'{col1}';
+    const ins=`'${nextSlot}'`;
+    const s=addCode.selectionStart, e=addCode.selectionEnd;
+    addCode.value=addCode.value.slice(0,s)+ins+addCode.value.slice(e);
+    addCode.selectionStart=addCode.selectionEnd=s+ins.length;
+    addCode.focus();
+    return;
+  }
+
+  // Main code editor focused AND no placeholder in code → insert at cursor
+  if(document.activeElement===editor && !editor.value.includes('COLUMN_NAME')){
     const s=editor.selectionStart, e=editor.selectionEnd;
     const ins=`'${col}'`;
     editor.value=editor.value.slice(0,s)+ins+editor.value.slice(e);
@@ -1325,12 +1339,16 @@ function toggleCol(el) {
   legend.style.display=state.selCols.length?'':'none';
   if(state.selCols.length) legend.innerHTML=`<span class="c1"></span><strong>col1</strong>: ${escHtml(state.selCols[0]||'—')} &nbsp;&nbsp;<span class="c2"></span><strong>col2</strong>: ${escHtml(state.selCols[1]||'—')} &nbsp;&nbsp;<span style="color:var(--muted);">(click again to deselect)</span>`;
 
-  // If a built-in chip was last run, refresh its code with the new column
+  // If a chip was last clicked, regenerate its code with the new column
   if(_lastChip){
     const gs=loadGroups();
     const a=gs[_lastChip.gi]?.actions[_lastChip.ai];
-    if(a) document.getElementById('codeEditor').value=groupActionCode(a);
+    if(a) editor.value=groupActionCode(a);
   }
+  // Always replace any remaining COLUMN_NAME in the editor
+  const c1f=state.selCols[0], c2f=state.selCols[1];
+  if(c1f) editor.value=editor.value.replaceAll("'COLUMN_NAME'",`'${c1f}'`).replaceAll('"COLUMN_NAME"',`'${c1f}'`);
+  if(c2f) editor.value=editor.value.replaceAll("'COLUMN_2'",`'${c2f}'`).replaceAll('"COLUMN_2"',`'${c2f}'`);
 }
 
 function onActiveFileChange() {
@@ -1343,6 +1361,7 @@ async function runCode() {
   const sid=state.activeFile;
   if(!sid){renderOutput({type:'error',message:'No active file. Upload a file first.'});return;}
   const code=document.getElementById('codeEditor').value.trim(); if(!code) return;
+  if(code.includes('COLUMN_NAME')||code.includes('{col1}')||code.includes('{col2}')){renderOutput({type:'error',message:'Please select a column first — click a column name in the column selector above, then run again.'});return;}
   setOutputLoading();
 
   let res,data;
@@ -1430,7 +1449,7 @@ function renderTbOutput(data) {
 
 /* ── AI assist ─────────────────────────────────────────────────── */
 async function runAiAssist() {
-  const sid=state.activeFile; if(!sid){alert('Upload a file first.');return;}
+  let sid=state.activeFile; if(!sid){alert('Upload a file first.');return;}
   const question=document.getElementById('aiQuestion').value.trim(); if(!question) return;
   const btn=document.getElementById('btnAiAssist'); const expEl=document.getElementById('aiExplanation');
   btn.disabled=true; btn.textContent='…'; expEl.style.display='none';
@@ -1439,11 +1458,27 @@ async function runAiAssist() {
     res=await fetch(apiUrl('/ai-assist'),{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({session_id:sid,question,current_code:document.getElementById('codeEditor').value.trim()})});
     data=await res.json();
-  }catch(e){alert(`Network error: ${e.message}`);}
-  finally{btn.disabled=false;btn.textContent='✨ Generate code';}
+  }catch(e){btn.disabled=false;btn.textContent='✨ Generate code';alert(`Network error: ${e.message}`);return;}
+  // Session expired → silently re-upload and retry
+  if(res.status===404||(data.error&&data.error.toLowerCase().includes('session not found'))){
+    const record=getUpload(sid);
+    if(record?._file){
+      btn.textContent='Reconnecting…';
+      const newSid=await reuploadFile(record);
+      if(newSid){
+        sid=newSid;
+        try{
+          res=await fetch(apiUrl('/ai-assist'),{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({session_id:newSid,question,current_code:document.getElementById('codeEditor').value.trim()})});
+          data=await res.json();
+        }catch(e){btn.disabled=false;btn.textContent='✨ Generate code';alert(`Network error: ${e.message}`);return;}
+      }
+    }
+  }
+  btn.disabled=false;btn.textContent='✨ Generate code';
   if(!data) return;
   if(data.error){alert(`AI error: ${data.error}`);return;}
-  if(data.code) document.getElementById('codeEditor').value=data.code;
+  if(data.code){ document.getElementById('codeEditor').value=data.code; _lastChip=null; }
   if(data.explanation){expEl.textContent=data.explanation;expEl.style.display='block';}
 }
 
@@ -1475,8 +1510,10 @@ function tbGroupActionCode(action) {
   const c2 = state.tbSelCols[1] || null;
   if (action.id) return codeForStat(action.id, c1, c2);
   let code = action.code || '';
-  if (c1) code = code.replaceAll('{col1}', c1);
-  if (c2) code = code.replaceAll('{col2}', c2);
+  code = code.replaceAll('{col1}', c1 || 'COLUMN_NAME');
+  code = code.replaceAll('{col2}', c2 || 'COLUMN_NAME');
+  if (c1) code = code.replaceAll("'COLUMN_NAME'", `'${c1}'`).replaceAll('"COLUMN_NAME"', `'${c1}'`);
+  if (c2) code = code.replaceAll("'COLUMN_2'", `'${c2}'`).replaceAll('"COLUMN_2"', `'${c2}'`);
   return code;
 }
 
@@ -1767,8 +1804,20 @@ function renderTbColSelector() {
 function toggleTbCol(el) {
   const col = el.dataset.col;
   const editor = document.getElementById('tbCodeEditor');
+  const addCode = document.getElementById('tbAddActCode');
 
-  if (document.activeElement === editor) {
+  // "Add action" code box focused → insert {col1}/{col2} placeholder
+  if (document.activeElement === addCode) {
+    const nextSlot = addCode.value.includes('{col1}') ? '{col2}' : '{col1}';
+    const ins = `'${nextSlot}'`;
+    const s = addCode.selectionStart, e = addCode.selectionEnd;
+    addCode.value = addCode.value.slice(0,s) + ins + addCode.value.slice(e);
+    addCode.selectionStart = addCode.selectionEnd = s + ins.length;
+    addCode.focus();
+    return;
+  }
+
+  if (document.activeElement === editor && !editor.value.includes('COLUMN_NAME')) {
     const s = editor.selectionStart, e = editor.selectionEnd;
     const ins = `'${col}'`;
     editor.value = editor.value.slice(0,s) + ins + editor.value.slice(e);
@@ -1800,11 +1849,16 @@ function toggleTbCol(el) {
   if (state.tbSelCols.length)
     legend.innerHTML = `<span class="c1"></span><strong>col1</strong>: ${escHtml(state.tbSelCols[0]||'—')} &nbsp;&nbsp;<span class="c2"></span><strong>col2</strong>: ${escHtml(state.tbSelCols[1]||'—')} &nbsp;&nbsp;<span style="color:var(--muted);">(click again to deselect)</span>`;
 
+  const tbEd = document.getElementById('tbCodeEditor');
   if (tb_lastChip) {
     const gs = loadTbGroups();
     const a = gs[tb_lastChip.gi]?.actions[tb_lastChip.ai];
-    if (a) document.getElementById('tbCodeEditor').value = tbGroupActionCode(a);
+    if (a) tbEd.value = tbGroupActionCode(a);
   }
+  // Always replace any remaining COLUMN_NAME in the editor
+  const c1f = state.tbSelCols[0], c2f = state.tbSelCols[1];
+  if (c1f) tbEd.value = tbEd.value.replaceAll("'COLUMN_NAME'", `'${c1f}'`).replaceAll('"COLUMN_NAME"', `'${c1f}'`);
+  if (c2f) tbEd.value = tbEd.value.replaceAll("'COLUMN_2'", `'${c2f}'`).replaceAll('"COLUMN_2"', `'${c2f}'`);
 }
 
 function onTbFileChange() {
@@ -1830,6 +1884,7 @@ async function runTbCode() {
   const sid = state.tbActiveFile;
   if (!sid) { renderTbOutput({type:'error',message:'No active file. Upload a file first.'}); return; }
   const code = document.getElementById('tbCodeEditor').value.trim(); if (!code) return;
+  if (code.includes('COLUMN_NAME')||code.includes('{col1}')||code.includes('{col2}')) { renderTbOutput({type:'error',message:'Please select a column first — click a column name in the column selector above, then run again.'}); return; }
   setTbOutputLoading();
 
   let res, data;
@@ -1860,7 +1915,7 @@ async function runTbCode() {
 
 /* ── Toolbox AI assist ─────────────────────────────────────────── */
 async function runTbAiAssist() {
-  const sid = state.tbActiveFile; if (!sid) { alert('Upload a file first.'); return; }
+  let sid = state.tbActiveFile; if (!sid) { alert('Upload a file first.'); return; }
   const question = document.getElementById('tbAiQuestion').value.trim(); if (!question) return;
   const expEl = document.getElementById('tbAiExplanation');
   expEl.style.display = 'none';
@@ -1870,9 +1925,24 @@ async function runTbAiAssist() {
       body:JSON.stringify({session_id:sid, question, current_code:document.getElementById('tbCodeEditor').value.trim()})});
     data = await res.json();
   } catch(e) { alert(`Network error: ${e.message}`); return; }
+  // Session expired → silently re-upload and retry
+  if (res.status===404 || (data.error && data.error.toLowerCase().includes('session not found'))) {
+    const record = getUpload(sid);
+    if (record?._file) {
+      const newSid = await reuploadFile(record);
+      if (newSid) {
+        sid = newSid;
+        try {
+          res = await fetch(apiUrl('/ai-assist'), {method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({session_id:newSid, question, current_code:document.getElementById('tbCodeEditor').value.trim()})});
+          data = await res.json();
+        } catch(e) { alert(`Network error: ${e.message}`); return; }
+      }
+    }
+  }
   if (!data) return;
   if (data.error) { alert(`AI error: ${data.error}`); return; }
-  if (data.code) document.getElementById('tbCodeEditor').value = data.code;
+  if (data.code) { document.getElementById('tbCodeEditor').value = data.code; tb_lastChip = null; }
   if (data.explanation) { expEl.textContent = data.explanation; expEl.style.display = 'block'; }
 }
 
@@ -1961,6 +2031,11 @@ function renderInterconnectProfile(data) {
 /* ── Init ──────────────────────────────────────────────────────── */
 renderAllGroups();
 renderAllTbGroups();
+
+// Clear lastChip when user manually edits the code — so column clicks replace
+// COLUMN_NAME in place instead of regenerating from the last chip
+document.getElementById('codeEditor').addEventListener('input', () => { _lastChip = null; });
+document.getElementById('tbCodeEditor').addEventListener('input', () => { tb_lastChip = null; });
 </script>
 </body>
 </html>

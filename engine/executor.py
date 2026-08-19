@@ -72,6 +72,7 @@ _SAFE_BUILTINS = {
     "any": any, "all": all,
     "isinstance": isinstance, "type": type,
     "hasattr": hasattr, "getattr": getattr,
+    "__import__": __import__,
 }
 
 
@@ -107,6 +108,19 @@ def run_code(code: str, df: pd.DataFrame) -> dict:
         plt.close('all')
         buf.seek(0)
         return {"type": "image", "data": base64.b64encode(buf.read()).decode()}
+
+    # Jupyter-style: if result wasn't explicitly set, try evaluating the last
+    # non-empty, non-comment line as an expression (e.g. `df.head(10)`).
+    if namespace.get("result") is None:
+        lines = [l for l in code.strip().splitlines()
+                 if l.strip() and not l.strip().startswith('#')]
+        if lines:
+            try:
+                val = eval(compile(lines[-1], "<user-code-expr>", "eval"), namespace)  # noqa: S307
+                if val is not None:
+                    namespace["result"] = val
+            except Exception:
+                pass  # not an expression — leave result as None
 
     return _to_json(namespace.get("result"))
 
