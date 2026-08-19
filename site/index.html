@@ -104,6 +104,7 @@
       background:var(--surface); border:1px solid var(--border);
       font-size:.75rem; cursor:pointer; color:var(--text);
       transition:background .12s,border-color .12s;
+      user-select:none; display:inline-flex; align-items:center;
     }
     .chip:hover { background:var(--accent); border-color:var(--accent); color:#fff; }
     .chip.needs-col { border-style:dashed; }
@@ -838,8 +839,10 @@ function setupViewDnD(root) {
     chipEl.addEventListener('dragstart', e => {
       if (e.target.closest('.chip-x')) { e.preventDefault(); return; }
       _dragItem = { type: 'chip', gi, ai };
-      chipEl.classList.add('dnd-dragging');
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', `${gi}:${ai}`); // required for drag to start in all browsers
+      // Delay class addition so the drag image captures the normal chip appearance
+      requestAnimationFrame(() => chipEl.classList.add('dnd-dragging'));
     });
 
     chipEl.addEventListener('dragend', () => {
@@ -849,14 +852,15 @@ function setupViewDnD(root) {
 
     // Drop on another chip → insert before it
     chipEl.addEventListener('dragover', e => {
-      if (_dragItem?.type !== 'chip') return;
+      if (!_dragItem || _dragItem.type !== 'chip') return;
       e.preventDefault(); e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
       clearHL(); chipEl.classList.add('dnd-over');
     });
 
     chipEl.addEventListener('drop', e => {
       e.preventDefault(); e.stopPropagation();
-      if (_dragItem?.type !== 'chip') return;
+      if (!_dragItem || _dragItem.type !== 'chip') return;
       const { gi: fgi, ai: fai } = _dragItem;
       if (fgi === gi && fai === ai) return;
       const gs = loadGroups();
@@ -867,21 +871,21 @@ function setupViewDnD(root) {
     });
   });
 
-  // Drop on chip zone → append to that group
+  // Drop on chip zone background → append to that group
   root.querySelectorAll('.qa-drop-zone').forEach(zone => {
     const toGi = +zone.dataset.dropGi;
 
     zone.addEventListener('dragover', e => {
-      if (_dragItem?.type !== 'chip') return;
+      if (!_dragItem || _dragItem.type !== 'chip') return;
       e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
       clearHL(); zone.classList.add('dnd-over');
     });
 
     zone.addEventListener('drop', e => {
       e.preventDefault();
-      if (_dragItem?.type !== 'chip') return;
+      if (!_dragItem || _dragItem.type !== 'chip') return;
       const { gi: fgi, ai: fai } = _dragItem;
-      if (fgi === toGi) { clearHL(); return; } // chip-on-chip handler covers same-group drops
       const gs = loadGroups();
       const [moved] = gs[fgi].actions.splice(fai, 1);
       gs[toGi].actions.push(moved);
@@ -943,8 +947,9 @@ function setupGroupDnD(root) {
     groupEl.addEventListener('dragstart', e => {
       if (!e.target.classList.contains('gm-drag-group')) { e.preventDefault(); return; }
       _dragItem = { type: 'group', gi };
-      groupEl.classList.add('dnd-dragging');
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', `group:${gi}`);
+      requestAnimationFrame(() => groupEl.classList.add('dnd-dragging'));
     });
 
     groupEl.addEventListener('dragend', () => {
