@@ -629,7 +629,7 @@ function codeFor(id, c1, c2) {
     // Correlation
     fast_corr: `_c = (df.corr(numeric_only=True).abs().unstack()\n      .sort_values(ascending=False).drop_duplicates()\n      .reset_index().rename(columns={'level_0':'col_a','level_1':'col_b',0:'abs_r'}))\nresult = _c[_c['col_a'] != _c['col_b']].head(20)`,
     // Aggregation
-    groupby_stats: `result = df.groupby(${Q1}).agg(['mean','std','min','max','count'])`,
+    groupby_stats: `_nc = df.select_dtypes('number').columns.tolist()\nresult = df.groupby(${Q1})[_nc].agg(['mean','std','min','max','count'])`,
     twoways_count: `result = df.groupby([${Q1},${Q2}]).size().unstack(fill_value=0)`,
     groupby_range: `result = df.groupby(${Q1})[${Q2}].agg(lambda s: s.max()-s.min()).reset_index(name='range')`,
     pivot:         `result = df.pivot_table(index=${Q1}, columns=${Q2}, aggfunc='count')`,
