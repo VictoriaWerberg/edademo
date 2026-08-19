@@ -663,6 +663,7 @@ function codeFor(id, c1, c2) {
 const GROUPS_KEY = 'eda_groups_v2';
 let gmManage  = false;
 let _dragItem = null;   // {type:'group'|'chip', gi, ai}
+let _lastChip = null;   // {gi, ai} — last chip run, so col change can refresh code
 
 function loadGroups() {
   try {
@@ -822,7 +823,9 @@ function setupViewEvents(root) {
     const chip = e.target.closest('.chip[data-dnd="chip"]');
     if (chip) {
       const gs = loadGroups();
-      const a  = gs[+chip.dataset.gi]?.actions[+chip.dataset.ai]; if (!a) return;
+      const gi = +chip.dataset.gi, ai = +chip.dataset.ai;
+      const a  = gs[gi]?.actions[ai]; if (!a) return;
+      _lastChip = a.id ? { gi, ai } : null; // only track built-in chips (they use selCols)
       document.getElementById('codeEditor').value = groupActionCode(a);
       runCode();
     }
@@ -1189,11 +1192,18 @@ function toggleCol(el) {
   const legend=document.getElementById('colLegend');
   legend.style.display=state.selCols.length?'':'none';
   if(state.selCols.length) legend.innerHTML=`<span class="c1"></span><strong>col1</strong>: ${escHtml(state.selCols[0]||'—')} &nbsp;&nbsp;<span class="c2"></span><strong>col2</strong>: ${escHtml(state.selCols[1]||'—')} &nbsp;&nbsp;<span style="color:var(--muted);">(click again to deselect)</span>`;
+
+  // If a built-in chip was last run, refresh its code with the new column
+  if(_lastChip){
+    const gs=loadGroups();
+    const a=gs[_lastChip.gi]?.actions[_lastChip.ai];
+    if(a?.id) document.getElementById('codeEditor').value=groupActionCode(a);
+  }
 }
 
 function onActiveFileChange() {
   const sid=document.getElementById('activeFileSelect')?.value;
-  if(sid){ state.activeFile=sid; state.selCols=[]; renderExploreToggles(); renderExplorePanels(); renderExploreColSelector(); }
+  if(sid){ state.activeFile=sid; state.selCols=[]; _lastChip=null; renderExploreToggles(); renderExplorePanels(); renderExploreColSelector(); }
 }
 
 /* ── Code execution ────────────────────────────────────────────── */
