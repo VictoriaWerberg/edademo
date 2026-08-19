@@ -1,72 +1,115 @@
 """
 engine/executor.py — Safe execution of user-supplied pandas code.
 
-Runs code in a restricted namespace containing only:
-  df       — the session DataFrame (read-only copy)
+Namespace available to user code:
+  df       — session DataFrame (copy)
   pd       — pandas
   np       — numpy
-  result   — the variable the user must assign their output to
+  io       — io module (for df.info(buf=...) etc.)
+  plt      — matplotlib.pyplot (if available)
+  result   — assign final output here
 
 Returns a JSON-serialisable dict:
-  {"type": "dataframe", "columns": [...], "rows": [[...], ...], "shape": [r, c]}
-  {"type": "scalar",    "value": ...}
-  {"type": "series",    "index": [...], "values": [...]}
+  {"type": "dataframe", ...}
+  {"type": "series",    ...}
+  {"type": "scalar",    ...}
+  {"type": "image",     "data": "<base64 PNG>"}   # when plt figure produced
   {"type": "error",     "message": "..."}
 """
 
 from __future__ import annotations
 
+import base64
+import io
 import traceback
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
+# ── Optional matplotlib ───────────────────────────────────────────
+try:
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
 
-# Builtins that are safe in a data exploration context
+    # Dark theme to match the UI
+    mpl.rcParams.update({
+        'figure.facecolor':  '#1a1d27',
+        'axes.facecolor':    '#22263a',
+        'text.color':        '#e2e8f0',
+        'axes.labelcolor':   '#e2e8f0',
+        'xtick.color':       '#8892b0',
+        'ytick.color':       '#8892b0',
+        'axes.edgecolor':    '#2e3450',
+        'grid.color':        '#2e3450',
+        'legend.facecolor':  '#22263a',
+        'legend.edgecolor':  '#2e3450',
+        'figure.dpi':        110,
+    })
+    HAS_MPL = True
+except ImportError:
+    HAS_MPL = False
+
+
+# ── Safe builtins ─────────────────────────────────────────────────
 _SAFE_BUILTINS = {
     "abs": abs, "len": len, "max": max, "min": min,
     "round": round, "sum": sum, "sorted": sorted,
     "list": list, "dict": dict, "tuple": tuple, "set": set,
     "str": str, "int": int, "float": float, "bool": bool,
     "print": print, "range": range, "enumerate": enumerate,
-    "zip": zip, "map": map, "filter": filter, "any": any, "all": all,
+    "zip": zip, "map": map, "filter": filter,
+    "any": any, "all": all,
     "isinstance": isinstance, "type": type,
+    "hasattr": hasattr, "getattr": getattr,
 }
 
 
+# ── Public entry point ────────────────────────────────────────────
 def run_code(code: str, df: pd.DataFrame) -> dict:
     """Execute *code* with *df* in scope; return a JSON-safe result dict."""
+
     namespace: dict[str, Any] = {
         "__builtins__": _SAFE_BUILTINS,
-        "pd": pd,
-        "np": np,
-        "df": df.copy(),   # copy so user can't mutate the stored df
+        "pd":     pd,
+        "np":     np,
+        "io":     io,
+        "df":     df.copy(),
         "result": None,
     }
 
+    if HAS_MPL:
+        plt.close('all')           # clear any leftover figures
+        namespace["plt"] = plt
+        namespace["mpl"] = mpl
+
     try:
-        exec(compile(code, "<user-code>", "exec"), namespace)  # noqa: S102
+        exec(compile(code, "<user-code>", "exec"), namespace)   # noqa: S102
     except Exception:
-        return {"type": "error", "message": traceback.format_exc(limit=5)}
+        return {"type": "error", "message": traceback.format_exc(limit=6)}
 
-    raw = namespace.get("result")
-    return _to_json(raw)
+    # If a matplotlib figure was produced, return it as a PNG
+    if HAS_MPL and plt.get_fignums():
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight',
+                    facecolor='#1a1d27', dpi=110)
+        plt.close('all')
+        buf.seek(0)
+        return {"type": "image", "data": base64.b64encode(buf.read()).decode()}
+
+    return _to_json(namespace.get("result"))
 
 
-# ---------------------------------------------------------------------------
-# Serialisation helpers
-# ---------------------------------------------------------------------------
-
+# ── Serialisation helpers ─────────────────────────────────────────
 def _to_json(obj: Any) -> dict:
     if obj is None:
         return {"type": "scalar", "value": None}
 
     if isinstance(obj, pd.DataFrame):
-        # Limit to 200 rows for display
-        sample = obj.head(200)
+        sample = obj.head(200).copy()
         for col in sample.select_dtypes(include="datetime").columns:
-            sample = sample.copy()
             sample[col] = sample[col].astype(str)
         return {
             "type":    "dataframe",
@@ -90,7 +133,6 @@ def _to_json(obj: Any) -> dict:
     if isinstance(obj, str):
         return {"type": "scalar", "value": obj}
 
-    # Fallback: coerce to string
     return {"type": "scalar", "value": str(obj)}
 
 
@@ -99,6 +141,6 @@ def _safe_scalar(v: Any) -> Any:
         return int(v)
     if isinstance(v, (np.floating,)):
         return float(v)
-    if isinstance(v, float) and (v != v):   # NaN
+    if isinstance(v, float) and v != v:   # NaN
         return None
     return v
