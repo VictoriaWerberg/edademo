@@ -430,33 +430,61 @@
 
 <!-- ══════════════════ TAB 4 · STAT TOOLBOX ════════════════════════ -->
 <section class="tab-panel" id="panel-toolbox">
+
+  <!-- 1. File + column selector -->
   <div class="card">
-    <div class="row-flex" style="margin-bottom:1rem;">
-      <h2 style="margin:0;">Statistics Toolbox</h2>
+    <div class="active-file-row">
+      <span>Active file:</span>
+      <select id="toolboxFileSelect" onchange="onTbFileChange()"></select>
       <span class="spacer"></span>
-      <div class="row-flex">
-        <span class="text-muted">File:</span>
-        <select id="toolboxFileSelect" style="max-width:280px;"></select>
-      </div>
     </div>
-    <div class="inner-tab-bar" id="toolboxTabBar">
-      <button class="inner-tab-btn active" data-inner="distribution">Distribution</button>
-      <button class="inner-tab-btn" data-inner="correlation">Correlation</button>
-      <button class="inner-tab-btn" data-inner="troubleshooting">Troubleshooting</button>
-      <button class="inner-tab-btn" data-inner="formal-stats">Formal stats</button>
-      <button class="inner-tab-btn" data-inner="spc">SPC</button>
-      <button class="inner-tab-btn" data-inner="outliers">Outliers</button>
-      <button class="inner-tab-btn" data-inner="reshape">Reshape / Joins</button>
-      <button class="inner-tab-btn" data-inner="production">Production monitoring</button>
+    <h3>Column selector — click to select col1 / col2 for quick actions</h3>
+    <div class="col-selector" id="tbColSelector"></div>
+    <div class="col-legend" id="tbColLegend" style="display:none;">
+      <span class="c1"></span>col1 &nbsp;&nbsp;
+      <span class="c2"></span>col2
     </div>
-    <div class="inner-panel active" id="inner-distribution"><div class="placeholder-box"><div class="ph-icon">📊</div><strong>Distribution analysis</strong><p>Histograms, density, normality tests, Cp/Cpk, goodness-of-fit.</p><p style="margin-top:.5rem;color:var(--accent2);font-size:.77rem;">— coming soon —</p></div></div>
-    <div class="inner-panel" id="inner-correlation"><div class="placeholder-box"><div class="ph-icon">🔗</div><strong>Correlation</strong><p>Pearson / Spearman matrix, scatter matrix, partial correlations.</p><p style="margin-top:.5rem;color:var(--accent2);font-size:.77rem;">— coming soon —</p></div></div>
-    <div class="inner-panel" id="inner-troubleshooting"><div class="placeholder-box"><div class="ph-icon">🔍</div><strong>Troubleshooting — Group comparison</strong><p>One-way comparison, 2-sample t-test, Fit Y by X (JMP style).</p><p style="margin-top:.5rem;color:var(--accent2);font-size:.77rem;">— coming soon —</p></div></div>
-    <div class="inner-panel" id="inner-formal-stats"><div class="placeholder-box"><div class="ph-icon">📐</div><strong>Formal stats — ANOVA / t-test</strong><p>One-way / two-way ANOVA, GLM, multiple comparisons, effect size.</p><p style="margin-top:.5rem;color:var(--accent2);font-size:.77rem;">— coming soon —</p></div></div>
-    <div class="inner-panel" id="inner-spc"><div class="placeholder-box"><div class="ph-icon">📈</div><strong>SPC — Statistical Process Control</strong><p>Xbar-R, I-MR, P, C, U control charts. Western Electric rules.</p><p style="margin-top:.5rem;color:var(--accent2);font-size:.77rem;">— coming soon —</p></div></div>
-    <div class="inner-panel" id="inner-outliers"><div class="placeholder-box"><div class="ph-icon">⚠️</div><strong>Outliers</strong><p>IQR / Z-score flagging, Grubbs test, Cook's distance.</p><p style="margin-top:.5rem;color:var(--accent2);font-size:.77rem;">— coming soon —</p></div></div>
-    <div class="inner-panel" id="inner-reshape"><div class="placeholder-box"><div class="ph-icon">🔄</div><strong>Reshape / Joins</strong><p>Stack, split, pivot, melt, join two uploaded files on a key column.</p><p style="margin-top:.5rem;color:var(--accent2);font-size:.77rem;">— coming soon —</p></div></div>
-    <div class="inner-panel" id="inner-production"><div class="placeholder-box"><div class="ph-icon">⏱️</div><strong>Production monitoring — Time-based</strong><p>Run charts, time-series trends, shift detection, moving averages.</p><p style="margin-top:.5rem;color:var(--accent2);font-size:.77rem;">— coming soon —</p></div></div>
+  </div>
+
+  <!-- 2. Quick actions -->
+  <div class="card">
+    <div class="row-flex" style="margin-bottom:.7rem;">
+      <h2 style="margin:0;">Quick actions
+        <span style="font-size:.72rem;font-weight:400;color:var(--muted);margin-left:.5rem;">
+          dashed = needs column · charts render inline · saved in browser
+        </span>
+      </h2>
+      <span class="spacer"></span>
+      <button class="btn btn-secondary" id="btnManageTbGroups" style="font-size:.78rem;" onclick="toggleManageTbGroups()">⚙ Manage</button>
+    </div>
+    <div id="tbGroupsContainer"></div>
+  </div>
+
+  <!-- 3. AI assistant -->
+  <div class="card">
+    <h2>AI assistant <span style="font-size:.72rem;color:var(--accent2);font-weight:400;">powered by Claude</span></h2>
+    <div class="ai-row">
+      <input type="text" id="tbAiQuestion" placeholder="e.g. Shapiro-Wilk normality test on the first numeric column" />
+      <button class="btn btn-secondary" onclick="runTbAiAssist()">✨ Generate code</button>
+    </div>
+    <div class="ai-explanation" id="tbAiExplanation"></div>
+  </div>
+
+  <!-- 4. Code editor -->
+  <div class="card">
+    <h2>Code editor</h2>
+    <p class="text-muted" style="font-size:.78rem;margin-bottom:.55rem;"><code style="color:var(--accent);">df</code> = active file above &nbsp;·&nbsp; <code style="color:var(--muted);">pd, np, plt, io, stats</code> available &nbsp;·&nbsp; assign result to <code style="color:var(--accent);">result</code> &nbsp;·&nbsp; matplotlib figures render automatically</p>
+    <textarea class="code-editor" id="tbCodeEditor" spellcheck="false" autocomplete="off"></textarea>
+    <div style="margin-top:.55rem;display:flex;gap:.45rem;">
+      <button class="btn btn-primary" onclick="runTbCode()">▶ Run</button>
+      <button class="btn btn-secondary" onclick="clearTbEditor()">✕ Clear</button>
+    </div>
+  </div>
+
+  <!-- 5. Output -->
+  <div class="card">
+    <h2>Output</h2>
+    <div class="output-panel empty" id="tbOutputPanel">Run code or click a quick action to see results here.</div>
   </div>
 </section>
 
@@ -500,6 +528,8 @@ const state = {
   exploreOn:    new Set(),
   activeFile:   null,
   selCols:      [],   // [col1, col2] — ordered selection
+  tbActiveFile: null,
+  tbSelCols:    [],   // [col1, col2] for toolbox
 };
 
 const TYPE_LABELS = {
@@ -657,6 +687,99 @@ function codeFor(id, c1, c2) {
     viz_control:    `_d = df[${Q1}].dropna()\n_m = _d.mean(); _s = _d.std()\nfig, ax = plt.subplots(figsize=(10,4))\nax.plot(_d.values, linewidth=1, color='#5b7cfa', marker='o', markersize=2)\nax.axhline(_m,      color='#22c55e', linewidth=1.5, label=f'Mean {_m:.3f}')\nax.axhline(_m+3*_s, color='#ef4444', linestyle='--', linewidth=1, label=f'+3σ {_m+3*_s:.3f}')\nax.axhline(_m-3*_s, color='#ef4444', linestyle='--', linewidth=1, label=f'-3σ {_m-3*_s:.3f}')\nax.set_title(f'Control chart: ${C1}')\nax.legend(fontsize=8); plt.tight_layout()`,
   };
   return codes[id] || `# Unknown action: ${id}\nresult = df.head(5)`;
+}
+
+/* ── Stat Toolbox group definitions ────────────────────────────── */
+const STAT_GROUPS = [
+  { icon:'📊', label:'Distribution', primary:true, actions:[
+    { id:'st_describe_full', label:'describe()' },
+    { id:'st_hist',          label:'histogram (col1)',       col:1 },
+    { id:'st_qq',            label:'Q-Q plot (col1)',        col:1 },
+    { id:'st_cpk',           label:'Cp / Cpk (col1)',        col:1 },
+    { id:'st_skew_kurt',     label:'skew & kurtosis' },
+    { id:'st_shapiro',       label:'Shapiro-Wilk (col1)',    col:1 },
+  ]},
+  { icon:'🔗', label:'Correlation', primary:true, actions:[
+    { id:'st_corr_heat',  label:'correlation heatmap' },
+    { id:'st_scatter',    label:'scatter (col1 vs col2)',    col:2 },
+    { id:'st_pearson',    label:'Pearson r (col1, col2)',    col:2 },
+    { id:'st_spearman',   label:'Spearman r (col1, col2)',   col:2 },
+  ]},
+  { icon:'🔍', label:'Group comparison', primary:true, actions:[
+    { id:'st_boxplot',     label:'boxplot col2 by col1',      col:2 },
+    { id:'st_group_means', label:'group means (col2 by col1)',col:2 },
+    { id:'st_ttest',       label:'2-sample t-test',           col:2 },
+    { id:'st_mannwhitney', label:'Mann-Whitney U',            col:2 },
+  ]},
+  { icon:'📐', label:'Formal stats', open:false, actions:[
+    { id:'st_anova',   label:'one-way ANOVA (col2 by col1)',  col:2 },
+    { id:'st_kruskal', label:'Kruskal-Wallis (col2 by col1)', col:2 },
+    { id:'st_cohend',  label:"Cohen's d (col2 by col1)",      col:2 },
+  ]},
+  { icon:'📈', label:'SPC', open:false, actions:[
+    { id:'st_imr',    label:'I-MR chart (col1)',   col:1 },
+    { id:'st_xbar',   label:'Xbar-R (col2 by col1)', col:2 },
+    { id:'st_nelson', label:'Nelson rules (col1)', col:1 },
+  ]},
+  { icon:'⚠️', label:'Outliers', open:false, actions:[
+    { id:'st_iqr_outliers',    label:'IQR outliers (col1)', col:1 },
+    { id:'st_zscore_outliers', label:'Z-score ≥3 (col1)',   col:1 },
+    { id:'st_grubbs',          label:'Grubbs test (col1)',   col:1 },
+  ]},
+  { icon:'🔄', label:'Reshape', open:false, actions:[
+    { id:'st_melt',      label:'melt (numeric cols)' },
+    { id:'st_pivot',     label:'pivot (col1, col2)',        col:2 },
+    { id:'st_stack',     label:'stack → long format' },
+    { id:'st_wide_long', label:'wide → long' },
+  ]},
+  { icon:'⏱️', label:'Production', open:false, actions:[
+    { id:'st_run_chart', label:'run chart (col1)', col:1 },
+    { id:'st_cusum',     label:'CUSUM (col1)',      col:1 },
+    { id:'st_ewma',      label:'EWMA trend (col1)', col:1 },
+    { id:'st_anomaly',   label:'anomaly flags (col1)', col:1 },
+  ]},
+];
+
+/* ── Stat code generator ───────────────────────────────────────── */
+function codeForStat(id, c1, c2) {
+  const C1 = c1 || 'COLUMN_NAME';
+  const C2 = c2 || 'COLUMN_2';
+  const Q1 = `'${C1}'`;
+  const Q2 = `'${C2}'`;
+  const codes = {
+    st_describe_full: `result = df.describe(include='all').T`,
+    st_hist: `fig, ax = plt.subplots(figsize=(8,4))\ndf[${Q1}].dropna().hist(bins=30, ax=ax, color='#5b7cfa', edgecolor='#2e3450')\nax.set_title(f'Distribution of ${C1}')\nax.set_xlabel(${Q1}); ax.set_ylabel('Count')\nplt.tight_layout()`,
+    st_qq: `_d = df[${Q1}].dropna().values\nfig, ax = plt.subplots(figsize=(6,5))\nstats.probplot(_d, dist='norm', plot=ax)\nax.set_title(f'Q-Q plot: ${C1}')\nplt.tight_layout()`,
+    st_cpk: `_d = df[${Q1}].dropna()\n_mean = _d.mean(); _std = _d.std()\n_lsl = _mean - 3*_std; _usl = _mean + 3*_std  # 3-sigma natural tolerance\n_cp  = (_usl - _lsl) / (6 * _std) if _std > 0 else float('nan')\n_cpu = (_usl - _mean) / (3 * _std) if _std > 0 else float('nan')\n_cpl = (_mean - _lsl) / (3 * _std) if _std > 0 else float('nan')\n_cpk = min(_cpu, _cpl)\nresult = pd.DataFrame({'metric':['mean','std','LSL','USL','Cp','Cpk'], 'value':[round(_mean,4),round(_std,4),round(_lsl,4),round(_usl,4),round(_cp,4),round(_cpk,4)]})`,
+    st_skew_kurt: `_n = df.select_dtypes('number')\nresult = pd.DataFrame({'column':_n.columns,'skewness':_n.skew().values,'kurtosis':_n.kurt().values}).round(4)`,
+    st_shapiro: `_d = df[${Q1}].dropna()\n_stat, _p = stats.shapiro(_d[:5000])\nresult = f'Shapiro-Wilk test on ${C1}\\nW = {_stat:.6f},  p = {_p:.6e}\\n{"Normal (p>0.05)" if _p > 0.05 else "NOT normal (p<=0.05)"}'`,
+    st_corr_heat: `_corr = df.corr(numeric_only=True)\n_n = len(_corr)\nfig, ax = plt.subplots(figsize=(max(5,_n*.7), max(4,_n*.6)))\nim = ax.imshow(_corr.values, cmap='RdBu_r', vmin=-1, vmax=1, aspect='auto')\nax.set_xticks(range(_n)); ax.set_yticks(range(_n))\nax.set_xticklabels(_corr.columns, rotation=45, ha='right', fontsize=8)\nax.set_yticklabels(_corr.columns, fontsize=8)\nfor i in range(_n):\n    for j in range(_n):\n        ax.text(j, i, f'{_corr.values[i,j]:.2f}', ha='center', va='center', fontsize=6)\nplt.colorbar(im, ax=ax); ax.set_title('Correlation matrix')\nplt.tight_layout()`,
+    st_scatter: `fig, ax = plt.subplots(figsize=(7,5))\n_sub = df[[${Q1},${Q2}]].dropna()\nax.scatter(_sub[${Q1}], _sub[${Q2}], alpha=0.5, s=18, color='#5b7cfa')\nax.set_xlabel(${Q1}); ax.set_ylabel(${Q2})\nax.set_title(f'${C1} vs ${C2}')\nplt.tight_layout()`,
+    st_pearson: `_sub = df[[${Q1},${Q2}]].dropna()\n_r, _p = stats.pearsonr(_sub[${Q1}], _sub[${Q2}])\nresult = f'Pearson r = {_r:.6f},  p = {_p:.6e}  (n={len(_sub)})'`,
+    st_spearman: `_sub = df[[${Q1},${Q2}]].dropna()\n_r, _p = stats.spearmanr(_sub[${Q1}], _sub[${Q2}])\nresult = f'Spearman rho = {_r:.6f},  p = {_p:.6e}  (n={len(_sub)})'`,
+    st_boxplot: `fig, ax = plt.subplots(figsize=(9,5))\ndf.boxplot(column=${Q2}, by=${Q1}, ax=ax)\nax.set_title(f'${C2} by ${C1}')\nplt.suptitle('')\nplt.tight_layout()`,
+    st_group_means: `result = df.groupby(${Q1})[${Q2}].agg(['count','mean','std','min','max']).round(4).reset_index()`,
+    st_ttest: `_grps = [g[${Q2}].dropna().values for _, g in df.groupby(${Q1})]\n_g1, _g2 = _grps[0], _grps[1] if len(_grps)>1 else _grps[0]\n_t, _p = stats.ttest_ind(_g1, _g2)\nresult = f'2-sample t-test (${C2} by ${C1})\\nt = {_t:.6f},  p = {_p:.6e}\\n(n1={len(_g1)}, n2={len(_g2)})'`,
+    st_mannwhitney: `_grps = [g[${Q2}].dropna().values for _, g in df.groupby(${Q1})]\n_g1, _g2 = _grps[0], _grps[1] if len(_grps)>1 else _grps[0]\n_u, _p = stats.mannwhitneyu(_g1, _g2, alternative='two-sided')\nresult = f'Mann-Whitney U (${C2} by ${C1})\\nU = {_u:.0f},  p = {_p:.6e}\\n(n1={len(_g1)}, n2={len(_g2)})'`,
+    st_anova: `_grps = [g[${Q2}].dropna().values for _, g in df.groupby(${Q1})]\n_f, _p = stats.f_oneway(*_grps)\nresult = f'One-way ANOVA (${C2} by ${C1})\\nF = {_f:.6f},  p = {_p:.6e}\\n({len(_grps)} groups)'`,
+    st_kruskal: `_grps = [g[${Q2}].dropna().values for _, g in df.groupby(${Q1})]\n_h, _p = stats.kruskal(*_grps)\nresult = f'Kruskal-Wallis (${C2} by ${C1})\\nH = {_h:.6f},  p = {_p:.6e}\\n({len(_grps)} groups)'`,
+    st_cohend: `_grps = [g[${Q2}].dropna().values for _, g in df.groupby(${Q1})]\n_g1, _g2 = _grps[0], _grps[1] if len(_grps)>1 else _grps[0]\n_pool_std = (((len(_g1)-1)*_g1.std()**2 + (len(_g2)-1)*_g2.std()**2) / (len(_g1)+len(_g2)-2))**0.5\n_d = (_g1.mean()-_g2.mean()) / _pool_std if _pool_std>0 else float('nan')\nresult = f"Cohen's d (${C2} by ${C1}) = {_d:.6f}\\n(|d|<0.2 small, 0.5 medium, 0.8 large)"`,
+    st_imr: `_d = df[${Q1}].dropna().reset_index(drop=True)\n_mr = _d.diff().abs()\n_xbar = _d.mean(); _mr_bar = _mr.mean()\n_ucl_x = _xbar + 2.66*_mr_bar; _lcl_x = _xbar - 2.66*_mr_bar\n_ucl_mr = 3.267*_mr_bar\nfig, (ax1,ax2) = plt.subplots(2,1,figsize=(10,6),sharex=True)\nax1.plot(_d.values, color='#5b7cfa', linewidth=1, marker='o', markersize=3)\nax1.axhline(_xbar, color='#22c55e', linewidth=1.5, label=f'Mean {_xbar:.3f}')\nax1.axhline(_ucl_x, color='#ef4444', linestyle='--', linewidth=1, label=f'UCL {_ucl_x:.3f}')\nax1.axhline(_lcl_x, color='#ef4444', linestyle='--', linewidth=1, label=f'LCL {_lcl_x:.3f}')\nax1.set_title(f'I chart: ${C1}'); ax1.legend(fontsize=8)\nax2.plot(_mr.values, color='#eab308', linewidth=1, marker='o', markersize=3)\nax2.axhline(_mr_bar, color='#22c55e', linewidth=1.5, label=f'MR-bar {_mr_bar:.3f}')\nax2.axhline(_ucl_mr, color='#ef4444', linestyle='--', linewidth=1, label=f'UCL {_ucl_mr:.3f}')\nax2.set_title('MR chart'); ax2.legend(fontsize=8)\nplt.tight_layout()`,
+    st_xbar: `_sub = df[[${Q1},${Q2}]].dropna()\n_means = _sub.groupby(${Q1})[${Q2}].mean()\n_ranges = _sub.groupby(${Q1})[${Q2}].apply(lambda x: x.max()-x.min())\n_xbar = _means.mean(); _r_bar = _ranges.mean()\n_n = _sub.groupby(${Q1}).size().mean()\n_a2 = {2:1.880,3:1.023,4:0.729,5:0.577}.get(int(round(_n)),0.577)\n_d3 = {2:0,3:0,4:0,5:0}.get(int(round(_n)),0)\n_d4 = {2:3.267,3:2.574,4:2.282,5:2.114}.get(int(round(_n)),2.114)\nfig,(ax1,ax2)=plt.subplots(2,1,figsize=(10,6),sharex=True)\nax1.plot(_means.values,color='#5b7cfa',linewidth=1,marker='o',markersize=4)\nax1.axhline(_xbar,color='#22c55e',linewidth=1.5,label=f'Xbar {_xbar:.3f}')\nax1.axhline(_xbar+_a2*_r_bar,color='#ef4444',linestyle='--',linewidth=1,label='UCL')\nax1.axhline(_xbar-_a2*_r_bar,color='#ef4444',linestyle='--',linewidth=1,label='LCL')\nax1.set_title(f'Xbar chart: ${C2} by ${C1}'); ax1.legend(fontsize=8)\nax2.plot(_ranges.values,color='#eab308',linewidth=1,marker='o',markersize=4)\nax2.axhline(_r_bar,color='#22c55e',linewidth=1.5,label=f'R-bar {_r_bar:.3f}')\nax2.axhline(_d4*_r_bar,color='#ef4444',linestyle='--',linewidth=1,label='UCL')\nax2.set_title('R chart'); ax2.legend(fontsize=8)\nplt.tight_layout()`,
+    st_nelson: `_d = df[${Q1}].dropna().reset_index(drop=True)\n_m = _d.mean(); _s = _d.std()\n_r1 = (_d - _m).abs() > 3*_s\n_r2 = pd.Series(False, index=_d.index)\nfor _i in range(7, len(_d)):\n    _run = _d.iloc[_i-7:_i+1]\n    _r2.iloc[_i] = bool((_run > _m).all() or (_run < _m).all())\nresult = pd.DataFrame({'index':_d.index,'value':_d.values,'rule1_beyond3sigma':_r1.values,'rule2_run8':_r2.values})`,
+    st_iqr_outliers: `_d = df[${Q1}].dropna()\n_q1,_q3 = _d.quantile(0.25), _d.quantile(0.75)\n_iqr = _q3 - _q1\n_lo, _hi = _q1 - 1.5*_iqr, _q3 + 1.5*_iqr\n_out = df[df[${Q1}].lt(_lo)|df[${Q1}].gt(_hi)]\n_summary = f'IQR outliers in ${C1}\\nQ1={_q1:.4f}, Q3={_q3:.4f}, IQR={_iqr:.4f}\\nFences: [{_lo:.4f}, {_hi:.4f}]\\nOutliers: {len(_out)} of {len(_d)} ({100*len(_out)/len(_d):.2f}%)'\nresult = _summary + '\\n\\n' + str(_out.head(20)) if len(_out) else _summary + '\\n\\nNo outliers found.'`,
+    st_zscore_outliers: `_d = df[${Q1}].dropna()\n_z = (_d - _d.mean()) / _d.std()\nresult = df.loc[_z.abs()>=3, [${Q1}]].assign(z_score=_z[_z.abs()>=3].round(4))`,
+    st_grubbs: `_d = df[${Q1}].dropna().values\n_n = len(_d)\n_g = max(abs(_d - _d.mean())) / _d.std()\n_t_crit = stats.t.ppf(1 - 0.05/(2*_n), _n-2)\n_g_crit = ((_n-1)/_n**0.5) * (_t_crit**2/(_n-2+_t_crit**2))**0.5\nresult = f'Grubbs test for outliers in ${C1}\\nG = {_g:.6f}\\nG_critical (alpha=0.05) = {_g_crit:.6f}\\n{"OUTLIER detected (G > G_crit)" if _g > _g_crit else "No outlier (G <= G_crit)"}'`,
+    st_melt: `_id_vars = df.select_dtypes('object').columns.tolist()\n_val_vars = df.select_dtypes('number').columns.tolist()\nresult = df.melt(id_vars=_id_vars, value_vars=_val_vars)`,
+    st_pivot: `result = df.pivot_table(index=${Q1}, columns=${Q2}, aggfunc='count')`,
+    st_stack: `result = df.set_index(df.columns[0]).stack().reset_index()\nresult.columns = list(result.columns[:-2]) + ['variable','value']`,
+    st_wide_long: `_id_vars = df.select_dtypes('object').columns.tolist() or [df.columns[0]]\n_val_vars = [c for c in df.columns if c not in _id_vars]\nresult = df.melt(id_vars=_id_vars, value_vars=_val_vars, var_name='variable', value_name='value')`,
+    st_run_chart: `_d = df[${Q1}].dropna().reset_index(drop=True)\n_m = _d.mean()\nfig, ax = plt.subplots(figsize=(10,4))\nax.plot(_d.values, color='#5b7cfa', linewidth=1, marker='o', markersize=3)\nax.axhline(_m, color='#22c55e', linewidth=1.5, linestyle='--', label=f'Mean {_m:.4f}')\nax.set_title(f'Run chart: ${C1}')\nax.set_xlabel('Observation'); ax.set_ylabel(${Q1})\nax.legend(fontsize=9); plt.tight_layout()`,
+    st_cusum: `_d = df[${Q1}].dropna().reset_index(drop=True)\n_m = _d.mean(); _s = _d.std()\n_k = 0.5  # slack\n_h = 5    # decision interval\n_cp = [0]; _cn = [0]\nfor _v in _d:\n    _cp.append(max(0, _cp[-1] + (_v-_m)/_s - _k))\n    _cn.append(max(0, _cn[-1] - (_v-_m)/_s - _k))\nfig, ax = plt.subplots(figsize=(10,4))\nax.plot(_cp[1:], color='#5b7cfa', linewidth=1, label='CUSUM+')\nax.plot(_cn[1:], color='#eab308', linewidth=1, label='CUSUM-')\nax.axhline(_h, color='#ef4444', linestyle='--', linewidth=1, label=f'h={_h}')\nax.axhline(-_h, color='#ef4444', linestyle='--', linewidth=1)\nax.set_title(f'CUSUM chart: ${C1}')\nax.legend(fontsize=9); plt.tight_layout()`,
+    st_ewma: `_d = df[${Q1}].dropna().reset_index(drop=True)\n_ewma = _d.ewm(span=20).mean()\nfig, ax = plt.subplots(figsize=(10,4))\nax.plot(_d.values, color='#5b7cfa', alpha=0.4, linewidth=1, label='Raw')\nax.plot(_ewma.values, color='#22c55e', linewidth=2, label='EWMA (span=20)')\nax.set_title(f'EWMA trend: ${C1}')\nax.legend(fontsize=9); plt.tight_layout()`,
+    st_anomaly: `_d = df[${Q1}].dropna().reset_index(drop=True)\n_roll_mean = _d.rolling(20, min_periods=5).mean()\n_roll_std  = _d.rolling(20, min_periods=5).std()\n_z = (_d - _roll_mean) / _roll_std.replace(0, float('nan'))\nresult = pd.DataFrame({'index':_d.index,'value':_d.values,'rolling_z':_z.round(4),'anomaly':_z.abs()>=3})`,
+  };
+  return codes[id] || `# Unknown stat action: ${id}\nresult = df.head(5)`;
 }
 
 /* ── Unified group management ──────────────────────────────────── */
@@ -1051,6 +1174,7 @@ function afterUpload(record) {
   if(state.uploads.length>=2) enableTab('crossfile');
   state.exploreOn.add(record.sessionId);
   if(!state.activeFile) state.activeFile=record.sessionId;
+  if(!state.tbActiveFile) { state.tbActiveFile=record.sessionId; renderTbColSelector(); }
   renderExploreToggles(); renderExplorePanels(); renderExploreColSelector();
   renderPreviewForSelected();
   switchTab('preview');
@@ -1075,6 +1199,7 @@ function removeFile(i) {
   state.exploreOn.delete(sid);
   state.selCols=[];
   if(state.activeFile===sid) state.activeFile=state.uploads[0]?.sessionId||null;
+  if(state.tbActiveFile===sid){ state.tbActiveFile=state.uploads[0]?.sessionId||null; state.tbSelCols=[]; renderTbColSelector(); }
   renderFilesList(); refreshAllSelects();
   renderExploreToggles(); renderExplorePanels(); renderExploreColSelector();
 }
@@ -1087,6 +1212,10 @@ function refreshAllSelects() {
   if(state.activeFile){
     const el=document.getElementById('activeFileSelect');
     if(el) el.value=state.activeFile;
+  }
+  if(state.tbActiveFile){
+    const el=document.getElementById('toolboxFileSelect');
+    if(el) el.value=state.tbActiveFile;
   }
   updateCrossfileStatus();
 }
@@ -1265,8 +1394,8 @@ function setOutputLoading() {
   p.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
-function renderOutput(data) {
-  const p=document.getElementById('outputPanel'); p.className='output-panel';
+function renderOutputToEl(p, data) {
+  p.className='output-panel';
   if(data.type==='error'){
     const msg = data.message || '';
     p.innerHTML=`<pre style="color:var(--red);white-space:pre-wrap;">${escHtml(msg)}</pre>`;
@@ -1289,6 +1418,12 @@ function renderOutput(data) {
   }
   p.innerHTML=`<pre style="color:var(--green);">${escHtml(String(data.value))}</pre>`;
 }
+function renderOutput(data) {
+  renderOutputToEl(document.getElementById('outputPanel'), data);
+}
+function renderTbOutput(data) {
+  renderOutputToEl(document.getElementById('tbOutputPanel'), data);
+}
 
 /* ── AI assist ─────────────────────────────────────────────────── */
 async function runAiAssist() {
@@ -1309,14 +1444,431 @@ async function runAiAssist() {
   if(data.explanation){expEl.textContent=data.explanation;expEl.style.display='block';}
 }
 
-/* ── Stats Toolbox inner tabs ──────────────────────────────────── */
-document.getElementById('toolboxTabBar').addEventListener('click',e=>{
-  const btn=e.target.closest('.inner-tab-btn'); if(!btn) return;
-  document.querySelectorAll('.inner-tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.inner-panel').forEach(p=>p.classList.remove('active'));
-  btn.classList.add('active');
-  const panel=document.getElementById('inner-'+btn.dataset.inner); if(panel) panel.classList.add('active');
-});
+/* ── Stat Toolbox group management ─────────────────────────────── */
+const TB_GROUPS_KEY = 'stat_groups_v2';
+let tbGmManage = false;
+let tb_drag    = null;   // {type:'group'|'chip', gi, ai}
+let tb_lastChip= null;   // {gi, ai}
+
+function loadTbGroups() {
+  try {
+    const s = localStorage.getItem(TB_GROUPS_KEY);
+    if (s) return JSON.parse(s);
+  } catch {}
+  const defaults = STAT_GROUPS.map(g => ({
+    icon: g.icon, label: g.label, primary: !!g.primary, open: !!g.open,
+    actions: g.actions.map(a => ({ id: a.id, label: a.label, col: a.col }))
+  }));
+  localStorage.setItem(TB_GROUPS_KEY, JSON.stringify(defaults));
+  return defaults;
+}
+
+function saveTbGroupsData(gs) {
+  localStorage.setItem(TB_GROUPS_KEY, JSON.stringify(gs));
+}
+
+function tbGroupActionCode(action) {
+  const c1 = state.tbSelCols[0] || null;
+  const c2 = state.tbSelCols[1] || null;
+  if (action.id) return codeForStat(action.id, c1, c2);
+  return action.code || '';
+}
+
+function toggleManageTbGroups() {
+  tbGmManage = !tbGmManage;
+  document.getElementById('btnManageTbGroups').textContent = tbGmManage ? '✓ Done' : '⚙ Manage';
+  renderAllTbGroups();
+}
+
+function collectTbEditsFromDom(root) {
+  const gs = loadTbGroups();
+  root.querySelectorAll('[data-af="tbgname"]').forEach(inp => {
+    const gi = +inp.dataset.gi; if (gs[gi]) gs[gi].label = inp.value.trim() || gs[gi].label;
+  });
+  root.querySelectorAll('[data-af="tbgicon"]').forEach(inp => {
+    const gi = +inp.dataset.gi; if (gs[gi]) gs[gi].icon = inp.value.trim();
+  });
+  return gs;
+}
+
+function renderAllTbGroups() {
+  const groups = loadTbGroups();
+  const cont   = document.getElementById('tbGroupsContainer');
+  if (!cont) return;
+
+  if (tbGmManage) {
+    const rows = groups.map((g, gi) => `
+      <div class="gm-group" draggable="true" data-dnd="tbgroup" data-gi="${gi}">
+        <div class="gm-hdr">
+          <span class="gm-drag-h gm-drag-tbgroup" title="Drag to reorder group">⠿</span>
+          <input class="gm-icon-inp" type="text" data-af="tbgicon" data-gi="${gi}" value="${escHtml(g.icon||'')}" title="Emoji icon" />
+          <input class="gm-name-inp" type="text" data-af="tbgname" data-gi="${gi}" value="${escHtml(g.label)}" />
+          <button class="gm-pin-btn${g.primary?' pinned':''}" data-tma="g-pin" data-gi="${gi}" title="${g.primary?'Unpin from top row':'Pin to always-visible row'}">📌</button>
+          <button class="gm-del-btn" data-tma="g-del" data-gi="${gi}" title="Delete group">🗑</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted);padding:0 .3rem .35rem;">${g.actions.length} action${g.actions.length!==1?'s':''} · drag chips in the normal view to reorganize</div>
+      </div>`).join('');
+
+    cont.innerHTML = `
+      <div class="gm-list" id="tbGmList">${rows}</div>
+      <div style="display:flex;gap:.4rem;margin-top:.55rem;">
+        <button class="btn btn-secondary" data-tma="g-add" style="font-size:.78rem;border-style:dashed;">＋ New group</button>
+      </div>`;
+
+    setupTbManageEvents(cont);
+    setupTbGroupDnD(cont);
+
+  } else {
+    const primGroups = groups.map((g,i) => ({...g,_i:i})).filter(g => g.primary);
+    const secGroups  = groups.map((g,i) => ({...g,_i:i})).filter(g => !g.primary);
+
+    function tbChipHtml(a, realGi, ai) {
+      const nc = a.col ? ' needs-col' : '';
+      const tt = a.col ? `Needs ${a.col} column${a.col>1?'s':''} selected` : '';
+      return `<span class="chip${nc}" draggable="true" data-tdnd="chip" data-gi="${realGi}" data-ai="${ai}" title="${tt}">${escHtml(a.label)}<button class="chip-x" data-tma="chip-del" data-gi="${realGi}" data-ai="${ai}" title="Remove">✕</button></span>`;
+    }
+
+    function tbChipAreaHtml(g) {
+      return g.actions.map((a,ai) => tbChipHtml(a, g._i, ai)).join('')
+        || `<span style="font-size:.74rem;color:var(--muted);">No actions — drop here to add.</span>`;
+    }
+
+    const primHtml = primGroups.length ? `
+      <div class="qa-primary-row" style="margin-bottom:.6rem;">${
+        primGroups.map(g => `<div class="qa-group-flat">
+          <div class="qa-group-hdr">${escHtml(g.icon||'•')} ${escHtml(g.label)}</div>
+          <div class="qa-chips qa-drop-zone" data-tb-drop-gi="${g._i}">${tbChipAreaHtml(g)}</div>
+        </div>`).join('')
+      }</div>` : '';
+
+    const secHtml = secGroups.length ? `
+      <div class="qa-groups">${
+        secGroups.map(g => `<details class="qa-group" ${g.open?'open':''}>
+          <summary>${escHtml(g.icon||'•')} ${escHtml(g.label)}<span class="qa-arrow">▶</span></summary>
+          <div class="qa-chips qa-drop-zone" data-tb-drop-gi="${g._i}">${tbChipAreaHtml(g)}</div>
+        </details>`).join('')
+      }</div>` : '';
+
+    const groupOptions = groups.map((g,i) =>
+      `<option value="${i}">${escHtml(g.icon||'•')} ${escHtml(g.label)}</option>`).join('');
+    const addFormHtml = `
+      <details id="tbAddActionDetails" style="margin-top:.6rem;">
+        <summary style="cursor:pointer;font-size:.8rem;color:var(--accent);padding:.3rem 0;list-style:none;display:flex;align-items:center;gap:.35rem;user-select:none;">
+          <span style="font-size:.9rem;">＋</span> Add action
+        </summary>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-top:.45rem;padding:.1rem .05rem .3rem;">
+          <div>
+            <label class="form-label">Name</label>
+            <input class="custom-input" id="tbAddActName" type="text" placeholder="e.g. my stat check" />
+          </div>
+          <div>
+            <label class="form-label">Group</label>
+            <select class="custom-input" id="tbAddActGroup" style="padding:.4rem .7rem;">${groupOptions}</select>
+          </div>
+          <div style="grid-column:1/-1;">
+            <label class="form-label">Code <span style="color:var(--muted);">(assign final output to <code style="font-size:.74rem;">result</code>; <code style="font-size:.74rem;">stats</code> = scipy.stats)</span></label>
+            <textarea class="custom-code" id="tbAddActCode" rows="3" placeholder="result = df.describe()"></textarea>
+          </div>
+          <div style="grid-column:1/-1;display:flex;gap:.4rem;">
+            <button class="btn btn-primary" style="font-size:.78rem;" onclick="saveNewTbViewAction()">＋ Save action</button>
+          </div>
+        </div>
+      </details>`;
+
+    cont.innerHTML = primHtml + secHtml + addFormHtml;
+    const fresh = cont.cloneNode(true);
+    cont.parentNode.replaceChild(fresh, cont);
+    setupTbViewEvents(fresh);
+    setupTbViewDnD(fresh);
+  }
+}
+
+function saveNewTbViewAction() {
+  const name = document.getElementById('tbAddActName')?.value.trim();
+  const code = document.getElementById('tbAddActCode')?.value.trim();
+  const gi   = +(document.getElementById('tbAddActGroup')?.value ?? 0);
+  if (!name || !code) { alert('Enter both a name and code.'); return; }
+  const gs = loadTbGroups();
+  if (!gs[gi]) { alert('Invalid group.'); return; }
+  gs[gi].actions.push({ label: name, code });
+  saveTbGroupsData(gs);
+  renderAllTbGroups();
+}
+
+function setupTbManageEvents(root) {
+  root.addEventListener('blur', e => {
+    if (e.target.dataset.af) saveTbGroupsData(collectTbEditsFromDom(root));
+  }, true);
+
+  root.addEventListener('click', e => {
+    if (e.target.closest('.gm-name-inp, .gm-icon-inp')) return;
+    const el = e.target.closest('[data-tma]'); if (!el) return;
+    const { tma, gi: giS } = el.dataset;
+    const gi = giS !== undefined ? +giS : undefined;
+
+    if (tma === 'g-del') {
+      const gs = collectTbEditsFromDom(root);
+      gs.splice(gi, 1);
+      saveTbGroupsData(gs); renderAllTbGroups();
+
+    } else if (tma === 'g-pin') {
+      const gs = collectTbEditsFromDom(root);
+      if (gs[gi]) gs[gi].primary = !gs[gi].primary;
+      saveTbGroupsData(gs); renderAllTbGroups();
+
+    } else if (tma === 'g-add') {
+      const gs = collectTbEditsFromDom(root);
+      gs.push({ icon: '⭐', label: 'New group', primary: false, open: false, actions: [] });
+      saveTbGroupsData(gs); renderAllTbGroups();
+    }
+  });
+}
+
+function setupTbGroupDnD(root) {
+  function clearHL() { root.querySelectorAll('.dnd-over').forEach(el => el.classList.remove('dnd-over')); }
+
+  root.querySelectorAll('[data-dnd="tbgroup"]').forEach(groupEl => {
+    const gi = +groupEl.dataset.gi;
+
+    groupEl.addEventListener('dragstart', e => {
+      if (!e.target.classList.contains('gm-drag-tbgroup')) { e.preventDefault(); return; }
+      tb_drag = { type: 'group', gi };
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', `tbgroup:${gi}`);
+      requestAnimationFrame(() => groupEl.classList.add('dnd-dragging'));
+    });
+
+    groupEl.addEventListener('dragend', () => {
+      groupEl.classList.remove('dnd-dragging');
+      clearHL(); tb_drag = null;
+    });
+
+    groupEl.addEventListener('dragover', e => {
+      if (tb_drag?.type !== 'group') return;
+      e.preventDefault(); e.stopPropagation();
+      clearHL(); groupEl.classList.add('dnd-over');
+    });
+
+    groupEl.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (tb_drag?.type !== 'group' || tb_drag.gi === gi) return;
+      const gs = collectTbEditsFromDom(root);
+      const [moved] = gs.splice(tb_drag.gi, 1);
+      gs.splice(gi, 0, moved);
+      saveTbGroupsData(gs); tb_drag = null; renderAllTbGroups();
+    });
+  });
+}
+
+function setupTbViewEvents(root) {
+  root.addEventListener('click', e => {
+    const delBtn = e.target.closest('.chip-x[data-tma="chip-del"]');
+    if (delBtn) {
+      e.stopPropagation();
+      const gs = loadTbGroups();
+      const gi = +delBtn.dataset.gi, ai = +delBtn.dataset.ai;
+      gs[gi]?.actions.splice(ai, 1);
+      saveTbGroupsData(gs);
+      renderAllTbGroups();
+      return;
+    }
+    const chip = e.target.closest('.chip[data-tdnd="chip"]');
+    if (chip) {
+      const gs = loadTbGroups();
+      const gi = +chip.dataset.gi, ai = +chip.dataset.ai;
+      const a  = gs[gi]?.actions[ai]; if (!a) return;
+      tb_lastChip = a.id ? { gi, ai } : null;
+      document.getElementById('tbCodeEditor').value = tbGroupActionCode(a);
+      document.getElementById('tbCodeEditor').focus();
+    }
+  });
+}
+
+function setupTbViewDnD(root) {
+  function clearHL() { root.querySelectorAll('.dnd-over').forEach(el => el.classList.remove('dnd-over')); }
+
+  root.querySelectorAll('.chip[data-tdnd="chip"]').forEach(chipEl => {
+    const gi = +chipEl.dataset.gi, ai = +chipEl.dataset.ai;
+
+    chipEl.addEventListener('dragstart', e => {
+      if (e.target.closest('.chip-x')) { e.preventDefault(); return; }
+      tb_drag = { type: 'chip', gi, ai };
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', `${gi}:${ai}`);
+      requestAnimationFrame(() => chipEl.classList.add('dnd-dragging'));
+    });
+
+    chipEl.addEventListener('dragend', () => {
+      chipEl.classList.remove('dnd-dragging');
+      clearHL(); tb_drag = null;
+    });
+
+    chipEl.addEventListener('dragover', e => {
+      if (!tb_drag || tb_drag.type !== 'chip') return;
+      e.preventDefault(); e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      clearHL(); chipEl.classList.add('dnd-over');
+    });
+
+    chipEl.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (!tb_drag || tb_drag.type !== 'chip') return;
+      const { gi: fgi, ai: fai } = tb_drag;
+      if (fgi === gi && fai === ai) return;
+      const gs = loadTbGroups();
+      const [moved] = gs[fgi].actions.splice(fai, 1);
+      const insertAt = (fgi === gi && fai < ai) ? ai - 1 : ai;
+      gs[gi].actions.splice(insertAt, 0, moved);
+      saveTbGroupsData(gs); tb_drag = null; renderAllTbGroups();
+    });
+  });
+
+  root.querySelectorAll('.qa-drop-zone[data-tb-drop-gi]').forEach(zone => {
+    const toGi = +zone.dataset.tbDropGi;
+
+    zone.addEventListener('dragover', e => {
+      if (!tb_drag || tb_drag.type !== 'chip') return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearHL(); zone.classList.add('dnd-over');
+    });
+
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!tb_drag || tb_drag.type !== 'chip') return;
+      const { gi: fgi, ai: fai } = tb_drag;
+      const gs = loadTbGroups();
+      const [moved] = gs[fgi].actions.splice(fai, 1);
+      gs[toGi].actions.push(moved);
+      saveTbGroupsData(gs); tb_drag = null; renderAllTbGroups();
+    });
+  });
+}
+
+/* ── Toolbox column selector ───────────────────────────────────── */
+function renderTbColSelector() {
+  const u = getUpload(state.tbActiveFile);
+  const sel = document.getElementById('tbColSelector'); if (!sel) return;
+  state.tbSelCols = [];
+  const legend = document.getElementById('tbColLegend');
+  if (legend) legend.style.display = 'none';
+  if (!u) { sel.innerHTML = ''; return; }
+  sel.innerHTML = u.columns.map(c =>
+    `<span class="col-tag" data-col="${escHtml(c.name)}" onclick="toggleTbCol(this)">${escHtml(c.name)}</span>`
+  ).join('');
+}
+
+function toggleTbCol(el) {
+  const col = el.dataset.col;
+  const editor = document.getElementById('tbCodeEditor');
+
+  if (document.activeElement === editor) {
+    const s = editor.selectionStart, e = editor.selectionEnd;
+    const ins = `'${col}'`;
+    editor.value = editor.value.slice(0,s) + ins + editor.value.slice(e);
+    editor.selectionStart = editor.selectionEnd = s + ins.length;
+    editor.focus();
+    return;
+  }
+
+  const idx = state.tbSelCols.indexOf(col);
+  if (idx > -1) {
+    state.tbSelCols.splice(idx, 1);
+    el.classList.remove('sel-1','sel-2');
+  } else if (state.tbSelCols.length < 2) {
+    state.tbSelCols.push(col);
+    el.classList.add(state.tbSelCols.length === 1 ? 'sel-1' : 'sel-2');
+  } else {
+    const old = state.tbSelCols[0];
+    document.getElementById('tbColSelector').querySelectorAll('.col-tag').forEach(t => {
+      if (t.dataset.col === old) t.classList.remove('sel-1','sel-2');
+    });
+    state.tbSelCols.shift();
+    state.tbSelCols.push(col);
+    document.getElementById('tbColSelector').querySelectorAll('.col-tag.sel-2').forEach(t => t.classList.replace('sel-2','sel-1'));
+    el.classList.add('sel-2');
+  }
+  const legend = document.getElementById('tbColLegend');
+  if (!legend) return;
+  legend.style.display = state.tbSelCols.length ? '' : 'none';
+  if (state.tbSelCols.length)
+    legend.innerHTML = `<span class="c1"></span><strong>col1</strong>: ${escHtml(state.tbSelCols[0]||'—')} &nbsp;&nbsp;<span class="c2"></span><strong>col2</strong>: ${escHtml(state.tbSelCols[1]||'—')} &nbsp;&nbsp;<span style="color:var(--muted);">(click again to deselect)</span>`;
+
+  if (tb_lastChip) {
+    const gs = loadTbGroups();
+    const a = gs[tb_lastChip.gi]?.actions[tb_lastChip.ai];
+    if (a?.id) document.getElementById('tbCodeEditor').value = tbGroupActionCode(a);
+  }
+}
+
+function onTbFileChange() {
+  const sid = document.getElementById('toolboxFileSelect')?.value;
+  if (sid) { state.tbActiveFile = sid; state.tbSelCols = []; tb_lastChip = null; renderTbColSelector(); }
+}
+
+/* ── Toolbox code execution ────────────────────────────────────── */
+function setTbOutputLoading() {
+  const p = document.getElementById('tbOutputPanel'); p.className='output-panel';
+  p.innerHTML='<span class="spinner"></span> Running…';
+  p.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function clearTbEditor() {
+  document.getElementById('tbCodeEditor').value = '';
+  const p = document.getElementById('tbOutputPanel'); p.className='output-panel empty';
+  p.textContent = 'Run code or click a quick action to see results here.';
+  document.getElementById('tbAiExplanation').style.display = 'none';
+}
+
+async function runTbCode() {
+  const sid = state.tbActiveFile;
+  if (!sid) { renderTbOutput({type:'error',message:'No active file. Upload a file first.'}); return; }
+  const code = document.getElementById('tbCodeEditor').value.trim(); if (!code) return;
+  setTbOutputLoading();
+
+  let res, data;
+  try {
+    res = await fetch(apiUrl('/execute'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({session_id:sid, code})});
+    data = await res.json();
+  } catch(e) { renderTbOutput({type:'error',message:`Network error: ${e.message}`}); return; }
+
+  if (res.status===404 || (data.type==='error' && (data.message||'').toLowerCase().includes('session not found'))) {
+    const record = getUpload(sid);
+    if (record?._file) {
+      const p = document.getElementById('tbOutputPanel');
+      p.innerHTML = '<span class="spinner"></span> Reconnecting…';
+      const newSid = await reuploadFile(record);
+      if (newSid) {
+        state.tbActiveFile = newSid;
+        try {
+          res = await fetch(apiUrl('/execute'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({session_id:newSid, code})});
+          data = await res.json();
+        } catch(e) { renderTbOutput({type:'error',message:`Network error: ${e.message}`}); return; }
+        renderTbOutput(data); return;
+      }
+    }
+  }
+
+  renderTbOutput(data);
+}
+
+/* ── Toolbox AI assist ─────────────────────────────────────────── */
+async function runTbAiAssist() {
+  const sid = state.tbActiveFile; if (!sid) { alert('Upload a file first.'); return; }
+  const question = document.getElementById('tbAiQuestion').value.trim(); if (!question) return;
+  const expEl = document.getElementById('tbAiExplanation');
+  expEl.style.display = 'none';
+  let res, data;
+  try {
+    res = await fetch(apiUrl('/ai-assist'), {method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({session_id:sid, question, current_code:document.getElementById('tbCodeEditor').value.trim()})});
+    data = await res.json();
+  } catch(e) { alert(`Network error: ${e.message}`); return; }
+  if (!data) return;
+  if (data.error) { alert(`AI error: ${data.error}`); return; }
+  if (data.code) document.getElementById('tbCodeEditor').value = data.code;
+  if (data.explanation) { expEl.textContent = data.explanation; expEl.style.display = 'block'; }
+}
 
 /* ── Profile ───────────────────────────────────────────────────── */
 async function runProfileInBackground(file,record) {
@@ -1402,6 +1954,7 @@ function renderInterconnectProfile(data) {
 
 /* ── Init ──────────────────────────────────────────────────────── */
 renderAllGroups();
+renderAllTbGroups();
 </script>
 </body>
 </html>

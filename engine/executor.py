@@ -52,6 +52,14 @@ try:
 except ImportError:
     HAS_MPL = False
 
+# ── Optional scipy ────────────────────────────────────────────────
+try:
+    import scipy.stats as _scipy_stats
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+    _scipy_stats = None
+
 
 # ── Safe builtins ─────────────────────────────────────────────────
 _SAFE_BUILTINS = {
@@ -78,6 +86,7 @@ def run_code(code: str, df: pd.DataFrame) -> dict:
         "io":     io,
         "df":     df.copy(),
         "result": None,
+        "stats":  _scipy_stats,   # scipy.stats (may be None if not installed)
     }
 
     if HAS_MPL:
