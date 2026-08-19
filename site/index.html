@@ -79,9 +79,9 @@
 
     /* ── Quick action groups (collapsible details) ───── */
     /* Primary row — always open, 4 columns */
-    .qa-primary-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; margin-bottom:.7rem; }
-    @media (max-width:1000px) { .qa-primary-row { grid-template-columns:repeat(2,1fr); } }
-    @media (max-width:560px)  { .qa-primary-row { grid-template-columns:1fr 1fr; } }
+    .qa-primary-row { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; margin-bottom:.7rem; }
+    @media (max-width:900px)  { .qa-primary-row { grid-template-columns:1fr 1fr; } }
+    @media (max-width:560px)  { .qa-primary-row { grid-template-columns:1fr; } }
     .qa-group-flat { background:var(--surface2); border:1px solid var(--accent); border-radius:9px; overflow:hidden; }
     .qa-group-flat .qa-group-hdr { display:flex; align-items:center; gap:.4rem; padding:.52rem .85rem .2rem; font-size:.8rem; font-weight:600; }
     /* Secondary grid — collapsible, 2 columns */
@@ -462,8 +462,6 @@ const QUICK_GROUPS = [
     { id:'head',    label:'head(10)'       },
     { id:'sample',  label:'sample(10)'     },
     { id:'tail',    label:'tail(5)'        },
-  ]},
-  { id:'structure', icon:'📐', label:'Structure', primary:true, actions:[
     { id:'shape',   label:'df.shape'       },
     { id:'info',    label:'df.info()'      },
     { id:'dtypes',  label:'dtypes'         },
