@@ -1023,7 +1023,7 @@ async function handleFile(file) {
   catch(e){ showAlert('uploadStatus',`Network error: ${escHtml(e.message)}`,'error'); return; }
   if(!res.ok||data.error){ showAlert('uploadStatus',escHtml(data.error||`HTTP ${res.status}`),'error'); return; }
 
-  const record={sessionId:data.session_id,name:file.name,fileType,typeLabel,columns:data.columns,shape:data.shape,preview:data.preview,profileData:null};
+  const record={sessionId:data.session_id,name:file.name,fileType,typeLabel,columns:data.columns,shape:data.shape,preview:data.preview,profileData:null,_file:file};
   state.uploads.push(record);
   showAlert('uploadStatus',`&#10003; <strong>${escHtml(file.name)}</strong> (${typeLabel}) — ${data.shape.rows.toLocaleString()} rows &times; ${data.shape.cols} cols`,'success');
   afterUpload(record);
@@ -1189,12 +1189,44 @@ async function runCode() {
   if(!sid){renderOutput({type:'error',message:'No active file. Upload a file first.'});return;}
   const code=document.getElementById('codeEditor').value.trim(); if(!code) return;
   setOutputLoading();
+
   let res,data;
   try{
     res=await fetch(apiUrl('/execute'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid,code})});
     data=await res.json();
   } catch(e){ renderOutput({type:'error',message:`Network error: ${e.message}`}); return; }
+
+  // Session expired → silently re-upload and retry once
+  if(res.status===404 || (data.type==='error' && (data.message||'').toLowerCase().includes('session not found'))){
+    const record=getUpload(sid);
+    if(record?._file){
+      const p=document.getElementById('outputPanel');
+      p.innerHTML='<span class="spinner"></span> Reconnecting…';
+      const newSid=await reuploadFile(record);
+      if(newSid){
+        try{
+          res=await fetch(apiUrl('/execute'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:newSid,code})});
+          data=await res.json();
+        } catch(e){ renderOutput({type:'error',message:`Network error: ${e.message}`}); return; }
+        renderOutput(data); return;
+      }
+    }
+  }
+
   renderOutput(data);
+}
+
+/* Re-upload a file silently; returns new session_id or null on failure */
+async function reuploadFile(record) {
+  try{
+    const form=new FormData(); form.append('file',record._file);
+    const res=await fetch(apiUrl('/upload'),{method:'POST',body:form});
+    const data=await res.json();
+    if(!res.ok||data.error) return null;
+    record.sessionId=data.session_id;
+    state.activeFile=data.session_id;
+    return data.session_id;
+  } catch{ return null; }
 }
 
 function clearEditor() {
@@ -1214,11 +1246,7 @@ function renderOutput(data) {
   const p=document.getElementById('outputPanel'); p.className='output-panel';
   if(data.type==='error'){
     const msg = data.message || '';
-    const isExpired = msg.toLowerCase().includes('session not found') || msg.toLowerCase().includes('expired');
-    const extra = isExpired
-      ? `<div style="margin-top:.6rem;font-size:.8rem;color:var(--yellow);">&#9888; Server restarted and lost your session. Go to <strong>tab 1 · Upload</strong> and re-upload your file.</div>`
-      : '';
-    p.innerHTML=`<pre style="color:var(--red);white-space:pre-wrap;">${escHtml(msg)}</pre>${extra}`;
+    p.innerHTML=`<pre style="color:var(--red);white-space:pre-wrap;">${escHtml(msg)}</pre>`;
     return;
   }
   if(data.type==='image'){p.innerHTML=`<img src="data:image/png;base64,${data.data}" style="max-width:100%;border-radius:6px;" />`;return;}
