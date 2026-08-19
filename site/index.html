@@ -1073,12 +1073,12 @@ function renderInterconnectProfile(data) {
 
 /* ── Custom quick actions ──────────────────────────────────────── */
 const CUSTOM_KEY = 'eda_custom_actions';
+const customEditGroups = new Set();  // groups currently in edit mode
 
 function loadCustomData() {
   try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '{}'); }
   catch { return {}; }
 }
-
 function persistCustomData(data) {
   localStorage.setItem(CUSTOM_KEY, JSON.stringify(data));
 }
@@ -1089,50 +1089,164 @@ function renderCustomGroups() {
   const container = document.getElementById('customQaGroups');
   const sel = document.getElementById('customGroupSelect');
 
-  // Refresh group dropdown
+  // Keep add-form group dropdown in sync
   sel.innerHTML = '<option value="__new__">＋ New group…</option>' +
     names.map(g => `<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('');
+  onCustomGroupChange();   // fix: show/hide new-group name field on every render
 
-  if (!names.length) { container.innerHTML = ''; return; }
+  if (!names.length) {
+    container.innerHTML = '<div style="font-size:.78rem;color:var(--muted);padding:.3rem 0;">No custom actions yet — use "+ Add action" below.</div>';
+  } else {
+    container.innerHTML = names.map(groupName => {
+      const actions = data[groupName];
+      const isEditing = customEditGroups.has(groupName);
 
-  container.innerHTML = names.map(groupName => {
-    const actions = data[groupName];
-    const chips = actions.map((a, i) =>
-      `<span class="chip" data-cg="${escHtml(groupName)}" data-ci="${i}">` +
-        `${escHtml(a.label)}` +
-        `<span class="chip-del" data-dg="${escHtml(groupName)}" data-di="${i}" title="Delete">✕</span>` +
-      `</span>`
-    ).join('');
-    return `<details class="qa-group" open>
-      <summary>⭐ ${escHtml(groupName)}<span class="qa-arrow">▶</span></summary>
-      <div class="qa-chips">${chips}</div>
-    </details>`;
-  }).join('');
+      if (isEditing) {
+        /* ── Edit mode ──────────────────────────────────────── */
+        const rows = actions.length
+          ? actions.map((a, i) => `
+            <div style="display:flex;gap:.3rem;align-items:center;margin-bottom:.32rem;">
+              <button class="btn btn-secondary" style="padding:.15rem .38rem;font-size:.72rem;"
+                data-ca="move-up" data-cg="${escHtml(groupName)}" data-ci="${i}">↑</button>
+              <button class="btn btn-secondary" style="padding:.15rem .38rem;font-size:.72rem;"
+                data-ca="move-down" data-cg="${escHtml(groupName)}" data-ci="${i}">↓</button>
+              <input class="custom-input" type="text"
+                data-cf="aname" data-ci="${i}"
+                value="${escHtml(a.label)}" style="flex:1;font-size:.8rem;" />
+              <button class="btn btn-secondary" style="padding:.15rem .38rem;font-size:.72rem;color:var(--red);"
+                data-ca="del-action" data-cg="${escHtml(groupName)}" data-ci="${i}">✕</button>
+            </div>`).join('')
+          : `<div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem;">No actions. Add one below.</div>`;
 
-  // Remove old listener by replacing node
+        return `
+          <div data-edit-group="${escHtml(groupName)}" style="background:var(--surface2);border:2px solid var(--accent2);border-radius:9px;padding:.75rem .9rem;margin-bottom:.4rem;">
+            <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.65rem;flex-wrap:wrap;">
+              <input class="custom-input" type="text" data-cf="gname"
+                value="${escHtml(groupName)}" style="font-weight:600;font-size:.86rem;flex:1;min-width:110px;" />
+              <button class="btn btn-primary"   style="font-size:.75rem;padding:.28rem .65rem;"
+                data-ca="done-group" data-cg="${escHtml(groupName)}">✓ Done</button>
+              <button class="btn btn-secondary" style="font-size:.75rem;padding:.28rem .65rem;color:var(--red);"
+                data-ca="del-group"  data-cg="${escHtml(groupName)}">🗑 Delete group</button>
+            </div>
+            ${rows}
+          </div>`;
+      }
+
+      /* ── View mode ──────────────────────────────────────────── */
+      const chips = actions.map((a, i) =>
+        `<span class="chip" data-ca="run" data-cg="${escHtml(groupName)}" data-ci="${i}">` +
+          `${escHtml(a.label)}` +
+          `<span class="chip-del" data-ca="del-action" data-cg="${escHtml(groupName)}" data-ci="${i}" title="Delete">✕</span>` +
+        `</span>`
+      ).join('');
+
+      return `<details class="qa-group" open>
+        <summary>⭐ ${escHtml(groupName)}
+          <button class="btn btn-secondary" style="font-size:.7rem;padding:.15rem .48rem;margin-left:auto;margin-right:.15rem;"
+            data-ca="edit-group" data-cg="${escHtml(groupName)}">✏ Edit</button>
+          <span class="qa-arrow">▶</span>
+        </summary>
+        <div class="qa-chips">${chips || '<span style="font-size:.75rem;color:var(--muted);">Empty group.</span>'}</div>
+      </details>`;
+    }).join('');
+  }
+
+  /* ── Single event listener via delegation ─────────────────────── */
   const fresh = container.cloneNode(true);
   container.parentNode.replaceChild(fresh, container);
+
   fresh.addEventListener('click', e => {
-    const del = e.target.closest('.chip-del');
-    if (del) { e.stopPropagation(); deleteCustomAction(del.dataset.dg, +del.dataset.di); return; }
-    const chip = e.target.closest('.chip');
-    if (!chip || chip.dataset.cg === undefined) return;
-    const d = loadCustomData();
-    const action = d[chip.dataset.cg]?.[+chip.dataset.ci];
-    if (!action) return;
-    document.getElementById('codeEditor').value = action.code;
-    runCode();
+    const el = e.target.closest('[data-ca]');
+    if (!el) return;
+    const ca = el.dataset.ca;
+    const cg = el.dataset.cg;
+    const ci = el.dataset.ci !== undefined ? +el.dataset.ci : undefined;
+
+    // Helper: read current edit-mode input values for a group
+    function collectEdits(grpName) {
+      const editDiv = fresh.querySelector(`[data-edit-group="${CSS.escape(grpName)}"]`);
+      const d = loadCustomData();
+      const newName = editDiv?.querySelector('[data-cf="gname"]')?.value.trim() || grpName;
+      const acts = (d[grpName] || []).map((a, j) => {
+        const inp = editDiv?.querySelector(`[data-cf="aname"][data-ci="${j}"]`);
+        return { label: inp?.value.trim() || a.label, code: a.code };
+      });
+      return { newName, acts };
+    }
+
+    if (ca === 'run') {
+      const d = loadCustomData();
+      const a = d[cg]?.[ci];
+      if (a) { document.getElementById('codeEditor').value = a.code; runCode(); }
+
+    } else if (ca === 'del-action') {
+      e.stopPropagation();
+      if (customEditGroups.has(cg)) {
+        // In edit mode: collect current edits first, then delete
+        const { newName, acts } = collectEdits(cg);
+        acts.splice(ci, 1);
+        const d = loadCustomData();
+        delete d[cg];
+        if (acts.length) d[newName] = acts; else customEditGroups.delete(cg);
+        // Re-add with new name in edit set if renamed
+        if (acts.length && newName !== cg) { customEditGroups.delete(cg); customEditGroups.add(newName); }
+        else if (acts.length) { /* keep edit mode on */ }
+        persistCustomData(d);
+      } else {
+        const d = loadCustomData();
+        if (!d[cg]) return;
+        d[cg].splice(ci, 1);
+        if (!d[cg].length) delete d[cg];
+        persistCustomData(d);
+      }
+      renderCustomGroups();
+
+    } else if (ca === 'edit-group') {
+      e.preventDefault(); e.stopPropagation();
+      customEditGroups.add(cg);
+      renderCustomGroups();
+
+    } else if (ca === 'done-group') {
+      const { newName, acts } = collectEdits(cg);
+      const d = loadCustomData();
+      delete d[cg];
+      d[newName] = acts;
+      customEditGroups.delete(cg);
+      persistCustomData(d);
+      renderCustomGroups();
+
+    } else if (ca === 'del-group') {
+      const d = loadCustomData();
+      delete d[cg];
+      customEditGroups.delete(cg);
+      persistCustomData(d);
+      renderCustomGroups();
+
+    } else if (ca === 'move-up' || ca === 'move-down') {
+      const { newName, acts } = collectEdits(cg);
+      const dir = ca === 'move-up' ? -1 : 1;
+      const ni = ci + dir;
+      if (ni < 0 || ni >= acts.length) return;
+      [acts[ci], acts[ni]] = [acts[ni], acts[ci]];
+      const d = loadCustomData();
+      delete d[cg];
+      d[newName] = acts;
+      if (newName !== cg) { customEditGroups.delete(cg); customEditGroups.add(newName); }
+      persistCustomData(d);
+      renderCustomGroups();
+    }
   });
 }
 
 function onCustomGroupChange() {
-  const val = document.getElementById('customGroupSelect').value;
-  document.getElementById('customGroupNameRow').style.display = val === '__new__' ? '' : 'none';
+  const sel = document.getElementById('customGroupSelect');
+  const row = document.getElementById('customGroupNameRow');
+  if (sel && row) row.style.display = sel.value === '__new__' ? '' : 'none';
 }
 
 function saveCustomAction() {
-  const name = document.getElementById('customActionName').value.trim();
-  const code = document.getElementById('customActionCode').value.trim();
+  const name      = document.getElementById('customActionName').value.trim();
+  const code      = document.getElementById('customActionCode').value.trim();
   const groupSel  = document.getElementById('customGroupSelect').value;
   const newGrpVal = document.getElementById('customGroupName').value.trim();
   if (!name) { alert('Enter an action name.'); return; }
@@ -1142,20 +1256,10 @@ function saveCustomAction() {
   if (!data[groupName]) data[groupName] = [];
   data[groupName].push({ label: name, code });
   persistCustomData(data);
-  // Reset form
   document.getElementById('customActionName').value = '';
   document.getElementById('customActionCode').value = '';
   document.getElementById('customGroupName').value = '';
   document.getElementById('addCustomDetails').removeAttribute('open');
-  renderCustomGroups();
-}
-
-function deleteCustomAction(groupName, idx) {
-  const data = loadCustomData();
-  if (!data[groupName]) return;
-  data[groupName].splice(idx, 1);
-  if (!data[groupName].length) delete data[groupName];
-  persistCustomData(data);
   renderCustomGroups();
 }
 
