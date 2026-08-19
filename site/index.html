@@ -1155,6 +1155,19 @@ function renderExploreColSelector() {
 
 function toggleCol(el) {
   const col=el.dataset.col;
+  const editor=document.getElementById('codeEditor');
+
+  // Code editor is focused → insert column name at cursor position
+  if(document.activeElement===editor){
+    const s=editor.selectionStart, e=editor.selectionEnd;
+    const ins=`'${col}'`;
+    editor.value=editor.value.slice(0,s)+ins+editor.value.slice(e);
+    editor.selectionStart=editor.selectionEnd=s+ins.length;
+    editor.focus();
+    return;
+  }
+
+  // Otherwise → col1/col2 selection for quick actions
   const idx=state.selCols.indexOf(col);
   if(idx>-1){
     state.selCols.splice(idx,1);
